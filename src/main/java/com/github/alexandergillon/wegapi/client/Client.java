@@ -32,6 +32,7 @@ public class Client {
 
     public static void main(String[] args) {
         Options options = new Options();
+        options.addOption("i", "init", false, "Initialize client.");
         options.addOption("c", "clicked", true, "Index of tile clicked.");
         options.addOption("d", "dragged", true, "Index of dragged tile.");
         options.addOption("t", "target", true, "Index of tile that was dragged onto.");
@@ -39,14 +40,18 @@ public class Client {
         CommandLineParser parser = new DefaultParser();
         try {
             CommandLine cmd = parser.parse(options, args);
-            if (cmd.hasOption("c")) {
-                int clickedIdx = Integer.parseInt(cmd.getOptionValue("c"));
+            if (cmd.hasOption("i")) {
                 ServerInterface server = connectToServer();
                 server.clientInit();
+                System.exit(0);
+            }
+            else if (cmd.hasOption("c")) {
+                int clickedIdx = Integer.parseInt(cmd.getOptionValue("c"));
+                ServerInterface server = connectToServer();
                 server.tileClicked(clickedIdx, 0);
                 System.exit(0);
             }
-            if (cmd.hasOption("d") || cmd.hasOption("t")) {
+            else if (cmd.hasOption("d") || cmd.hasOption("t")) {
                 if (!(cmd.hasOption("d") && cmd.hasOption("t"))) {
                     System.out.println("One of -d or -t was specified, but not the other.");
                     System.exit(1);
@@ -54,7 +59,6 @@ public class Client {
                 int draggedFrom = Integer.parseInt(cmd.getOptionValue("d"));
                 int draggedTo = Integer.parseInt(cmd.getOptionValue("t"));
                 ServerInterface server = connectToServer();
-                server.clientInit();
                 server.tileDragged(draggedFrom, draggedTo, 0);
                 System.exit(0);
             }

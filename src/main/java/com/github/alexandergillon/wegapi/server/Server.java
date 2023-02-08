@@ -7,7 +7,7 @@ import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Vector;
+import java.util.ArrayList;
 
 public class Server extends UnicastRemoteObject implements ServerInterface {
     public Server() throws RemoteException {
@@ -15,21 +15,21 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     }
 
     @Override
-    public Vector<GameAction> clientInit() {
+    public ArrayList<GameAction> clientInit() {
         System.out.println("client init received");
-        return new Vector<>();
+        return new ArrayList<>();
     }
 
     @Override
-    public Vector<GameAction> tileClicked(int tile, int player) {
+    public ArrayList<GameAction> tileClicked(int tile, int player) {
         System.out.printf("tile clicked: %d by player %d%n", tile, player);
-        return new Vector<>();
+        return new ArrayList<>();
     }
 
     @Override
-    public Vector<GameAction> tileDragged(int fromTile, int toTile, int player) {
+    public ArrayList<GameAction> tileDragged(int fromTile, int toTile, int player) {
         System.out.printf("tile dragged: from %d to %d by player %d%n", fromTile, toTile, player);
-        return new Vector<>();
+        return new ArrayList<>();
     }
 
     public static void main(String[] args) {
