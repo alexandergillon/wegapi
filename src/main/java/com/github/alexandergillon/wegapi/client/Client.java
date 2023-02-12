@@ -1,5 +1,12 @@
 package com.github.alexandergillon.wegapi.client;
 
+/*
+Usage:
+    -c<n>: tile n clicked
+    -d<n> -t<m>: tile n dragged to m
+    -i: init
+ */
+
 import com.github.alexandergillon.wegapi.server.Server;
 import com.github.alexandergillon.wegapi.server.ServerInterface;
 import org.apache.commons.cli.CommandLine;
