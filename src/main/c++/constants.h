@@ -2,9 +2,7 @@
 #include <unordered_map>
 
 namespace wegapi {
-    namespace filenames {
-        const int FILENAME_LENGTH = 6;
-
+    namespace java {
         /* const wchar_t JAR_FILENAME[] = L"wegapi";
         const wchar_t GAMEDATA_DIR[] = L".gamedata";
         const wchar_t JAVA_CLIENT_CLASSNAME[] = L"com.github.alexandergillon.wegapi.client.Client"; */
@@ -12,7 +10,10 @@ namespace wegapi {
         // The space at the front of these literals is REQUIRED. Else java will not receive parameters correctly.
         const wchar_t JAVA_CMDLINE_CLICKED[] = L" -cp .\\.gamedata\\wegapi.jar com.github.alexandergillon.wegapi.client.Client -c%d";
         const wchar_t JAVA_CMDLINE_DRAGGED[] = L" -cp .\\.gamedata\\wegapi.jar com.github.alexandergillon.wegapi.client.Client -d%d -t%d";
+    }
 
+    namespace filenames {
+        const int FILENAME_LENGTH = 5;
 
         namespace characters {
             // using abcde for testing purposes 
@@ -30,7 +31,7 @@ namespace wegapi {
                 {hair_space, 4}
             };
 
-            static const std::unordered_map<wchar_t, int> sort_order_to_wchar = {
+            static const std::unordered_map<int, wchar_t> sort_order_to_wchar = {
                 {0, three_per_em_space},
                 {0, four_per_em_space},
                 {0, six_per_em_space},
