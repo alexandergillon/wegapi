@@ -17,7 +17,7 @@ import java.util.ArrayList;
 
 import org.apache.commons.cli.*;
 
-import com.github.alexandergillon.wegapi.game_action.GameAction;
+import com.github.alexandergillon.wegapi.game.game_action.GameAction;
 import com.github.alexandergillon.wegapi.server.ServerInterface;
 
 public class Client {

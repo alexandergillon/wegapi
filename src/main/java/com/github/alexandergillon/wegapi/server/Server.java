@@ -8,7 +8,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 
-import com.github.alexandergillon.wegapi.game_action.GameAction;
+import com.github.alexandergillon.wegapi.game.game_action.GameAction;
 
 public class Server extends UnicastRemoteObject implements ServerInterface {
     public Server() throws RemoteException {

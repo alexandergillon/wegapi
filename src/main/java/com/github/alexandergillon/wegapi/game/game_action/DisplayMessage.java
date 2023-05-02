@@ -1,4 +1,4 @@
-package com.github.alexandergillon.wegapi.game_action;
+package com.github.alexandergillon.wegapi.game.game_action;
 
 public class DisplayMessage extends GameAction {
     public enum MessageType {

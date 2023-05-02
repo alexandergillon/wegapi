@@ -4,7 +4,7 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
-import com.github.alexandergillon.wegapi.game_action.GameAction;
+import com.github.alexandergillon.wegapi.game.game_action.GameAction;
 
 public interface ServerInterface extends Remote {
     /**

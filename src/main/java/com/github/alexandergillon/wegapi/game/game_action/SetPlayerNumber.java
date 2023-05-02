@@ -1,4 +1,4 @@
-package com.github.alexandergillon.wegapi.game_action;
+package com.github.alexandergillon.wegapi.game.game_action;
 
 public class SetPlayerNumber extends GameAction {
     private final int playerNumber;
