@@ -1,6 +1,6 @@
 package com.github.alexandergillon.wegapi.game_action;
 
-public class Message extends GameAction {
+public class DisplayMessage extends GameAction {
     public enum MessageType {
         DEFAULT,
         ERROR
@@ -9,9 +9,10 @@ public class Message extends GameAction {
     private String message;
     private MessageType messageType;
 
-    public Message(String message) {
+    public DisplayMessage(String message, MessageType messageType) {
         actionType = ActionType.DISPLAY_MESSAGE;
         this.message = message;
+        this.messageType = messageType;
     }
 
     public String getMessage() {

@@ -1,6 +1,5 @@
+// java -cp wegapi.jar com.github.alexandergillon.wegapi.server.Server
 package com.github.alexandergillon.wegapi.server;
-
-import com.github.alexandergillon.wegapi.game_action.GameAction;
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
@@ -8,6 +7,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+
+import com.github.alexandergillon.wegapi.game_action.GameAction;
 
 public class Server extends UnicastRemoteObject implements ServerInterface {
     public Server() throws RemoteException {

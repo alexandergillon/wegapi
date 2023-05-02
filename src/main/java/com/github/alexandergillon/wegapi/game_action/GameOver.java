@@ -1,7 +1,7 @@
 package com.github.alexandergillon.wegapi.game_action;
 
 public class GameOver extends GameAction {
-    private boolean win;
+    private final boolean win;
 
     public GameOver(boolean win) {
         actionType = ActionType.GAME_OVER;

@@ -5,78 +5,113 @@ Usage:
     -c<n>: tile n clicked
     -d<n> -t<m>: tile n dragged to m
     -i: init
- */
 
-import com.github.alexandergillon.wegapi.server.Server;
-import com.github.alexandergillon.wegapi.server.ServerInterface;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+todo: authentication / access tokens?
+ */
 
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.util.ArrayList;
+
+import org.apache.commons.cli.*;
+
+import com.github.alexandergillon.wegapi.game_action.GameAction;
+import com.github.alexandergillon.wegapi.server.ServerInterface;
 
 public class Client {
-    private int playerNumber;
+    private int playerNumber; // todo: set up
 
+    /**
+     * Prints a help message and exits.
+     */
+    private static void printHelpAndExit() {
+        String helpMessage =
+            "usage: java -cp wegapi.jar com.github.alexandergillon.wegapi.client.Client [options]\n" +
+            "Valid options are as follows (com.github.alexandergillon.wegapi.client.Client is abbreviated to Client, for brevity):\n" +
+            "  java -cp wegapi.jar Client -i             Initialize this player (register with the server, and populate game directory)\n" +
+            "  java -cp wegapi.jar Client -c<n>          This player double-clicked on tile n\n" +
+            "  java -cp wegapi.jar Client -d<n> -t<m>    This player dragged tile n to tile m\n";
+
+        System.out.print(helpMessage);
+        System.exit(1);
+    }
+
+    /**
+     * Prints an error message, followed by a help message, then exits.
+     */
+    private static void printHelpAndExit(String errorMessage) {
+        System.out.println(errorMessage);
+        printHelpAndExit();
+    }
+
+    /**
+     * Parses command-line arguments, and makes appropriate requests to the server.
+     *
+     * @param args the arguments to parse, from main
+     * @return a list of game actions to perform, based on the response from the server
+     */
+    private static ArrayList<GameAction> parseArgsAndContactServer(String[] args) {
+        Options options = new Options();
+        options.addOption("i", "init", false, "Initialize this client");
+        options.addOption("c", "clicked", true, "Index of tile clicked");
+        options.addOption("d", "dragged", true, "Index of dragged tile");
+        options.addOption("t", "target", true, "Index of tile that was dragged onto");
+        CommandLineParser parser = new DefaultParser();
+
+        try {
+            CommandLine cmdline = parser.parse(options, args);
+
+            if (cmdline.hasOption("i")) {
+                ServerInterface server = connectToServer();
+                return server.clientInit();
+            } else if (cmdline.hasOption("c")) {
+                int clickedIdx = Integer.parseInt(cmdline.getOptionValue("c"));
+                ServerInterface server = connectToServer();
+                return server.tileClicked(clickedIdx, 0);
+            } else if (cmdline.hasOption("d") || cmdline.hasOption("t")) {
+                if (!(cmdline.hasOption("d") && cmdline.hasOption("t"))) {
+                    printHelpAndExit("One of -d or -t was specified, but not the other.");
+                }
+                int draggedFrom = Integer.parseInt(cmdline.getOptionValue("d"));
+                int draggedTo = Integer.parseInt(cmdline.getOptionValue("t"));
+                ServerInterface server = connectToServer();
+                return server.tileDragged(draggedFrom, draggedTo, 0);
+            } else {
+                printHelpAndExit("None of -c, -d, or -t were specified (required).");
+                return null;
+            }
+        } catch (ParseException e) {
+            printHelpAndExit("ParseException: " + e.toString());
+        } catch (NumberFormatException e) {
+            printHelpAndExit("Invalid option argument: " + e.toString());
+        } catch (RemoteException e) {
+            printHelpAndExit("Encountered RemoteException while parsing arguments: " + e.toString());
+        }
+        return null;
+    }
+
+    /**
+     * Connects to the server, returning a remote object that exports the ServerInterface interface.
+     *
+     * @return The server, as a remote object that exports the ServerInterface interface
+     */
     private static ServerInterface connectToServer() {
         try {
             return (ServerInterface) Naming.lookup("//127.0.0.1:1099/gameServer");
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to server, %s%n", e.toString());
         } catch (NotBoundException e) {
-            System.out.printf("Server is not bound on  while connecting to server, %s%n", e.toString());
-        } catch (MalformedURLException ignore) {
-
+            System.out.printf("Server is not bound while connecting to server, %s%n", e.toString());
+        } catch (MalformedURLException e) {
+            System.out.printf("Malformed URL while connecting to server, %s%n", e.toString());
         }
         System.exit(1);
         return null;
     }
 
     public static void main(String[] args) {
-        Options options = new Options();
-        options.addOption("i", "init", false, "Initialize client.");
-        options.addOption("c", "clicked", true, "Index of tile clicked.");
-        options.addOption("d", "dragged", true, "Index of dragged tile.");
-        options.addOption("t", "target", true, "Index of tile that was dragged onto.");
-
-        CommandLineParser parser = new DefaultParser();
-        try {
-            CommandLine cmd = parser.parse(options, args);
-            if (cmd.hasOption("i")) {
-                ServerInterface server = connectToServer();
-                server.clientInit();
-                System.exit(0);
-            }
-            else if (cmd.hasOption("c")) {
-                int clickedIdx = Integer.parseInt(cmd.getOptionValue("c"));
-                ServerInterface server = connectToServer();
-                server.tileClicked(clickedIdx, 0);
-                System.exit(0);
-            }
-            else if (cmd.hasOption("d") || cmd.hasOption("t")) {
-                if (!(cmd.hasOption("d") && cmd.hasOption("t"))) {
-                    System.out.println("One of -d or -t was specified, but not the other.");
-                    System.exit(1);
-                }
-                int draggedFrom = Integer.parseInt(cmd.getOptionValue("d"));
-                int draggedTo = Integer.parseInt(cmd.getOptionValue("t"));
-                ServerInterface server = connectToServer();
-                server.tileDragged(draggedFrom, draggedTo, 0);
-                System.exit(0);
-            }
-            System.out.println("None of -c, -d, or -t were specified (required).");
-            System.exit(1);
-        } catch (ParseException e) {
-            System.out.printf("ParseException, %s%n", e.toString());
-        } catch (NumberFormatException e) {
-            System.out.printf("Invalid option argument, %s%n", e.toString());
-        } catch (RemoteException e) {
-            System.out.printf("Encountered RemoteException, %s%n", e.toString());
-        }
+        ArrayList<GameAction> actions = parseArgsAndContactServer(args);
     }
 }
