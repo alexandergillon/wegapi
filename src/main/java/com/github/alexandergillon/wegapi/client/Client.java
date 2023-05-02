@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import org.apache.commons.cli.*;
 
 import com.github.alexandergillon.wegapi.game.game_action.GameAction;
-import com.github.alexandergillon.wegapi.server.ServerInterface;
+import com.github.alexandergillon.wegapi.game.GameInterface;
 
 public class Client {
     private int playerNumber; // todo: set up
@@ -64,11 +64,11 @@ public class Client {
             CommandLine cmdline = parser.parse(options, args);
 
             if (cmdline.hasOption("i")) {
-                ServerInterface server = connectToServer();
+                GameInterface server = connectToServer();
                 return server.clientInit();
             } else if (cmdline.hasOption("c")) {
                 int clickedIdx = Integer.parseInt(cmdline.getOptionValue("c"));
-                ServerInterface server = connectToServer();
+                GameInterface server = connectToServer();
                 return server.tileClicked(clickedIdx, 0);
             } else if (cmdline.hasOption("d") || cmdline.hasOption("t")) {
                 if (!(cmdline.hasOption("d") && cmdline.hasOption("t"))) {
@@ -76,7 +76,7 @@ public class Client {
                 }
                 int draggedFrom = Integer.parseInt(cmdline.getOptionValue("d"));
                 int draggedTo = Integer.parseInt(cmdline.getOptionValue("t"));
-                ServerInterface server = connectToServer();
+                GameInterface server = connectToServer();
                 return server.tileDragged(draggedFrom, draggedTo, 0);
             } else {
                 printHelpAndExit("None of -c, -d, or -t were specified (required).");
@@ -97,9 +97,9 @@ public class Client {
      *
      * @return The server, as a remote object that exports the ServerInterface interface
      */
-    private static ServerInterface connectToServer() {
+    private static GameInterface connectToServer() {
         try {
-            return (ServerInterface) Naming.lookup("//127.0.0.1:1099/gameServer");
+            return (GameInterface) Naming.lookup("//127.0.0.1:1099/gameServer");
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to server, %s%n", e.toString());
         } catch (NotBoundException e) {
