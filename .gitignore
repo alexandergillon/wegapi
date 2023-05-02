@@ -6,6 +6,10 @@ game/
 
 /src/main/c++/*.exe
 /src/main/c++/*.obj
+/src/main/c++/bin
+/src/main/c++/build
+/src/main/c++/cmake-build-debug
+!README.md
 
 ### IntelliJ IDEA ###
 .idea/
