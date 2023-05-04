@@ -239,8 +239,7 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
  * @param argv argv[1] (OPTIONAL): path of another tile executable in the same directory
  * @return
  */
-int wmain(int argc, wchar_t* argv[])
-{
+int wmain(int argc, wchar_t* argv[]) {
     using namespace std; // todo: remove
 
     // First, we find the name of our executable
