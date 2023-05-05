@@ -6,6 +6,7 @@ namespace wegapi {
         /* const wchar_t JAR_FILENAME[] = L"wegapi";
         const wchar_t GAMEDATA_DIR[] = L".gamedata";
         const wchar_t JAVA_CLIENT_CLASSNAME[] = L"com.github.alexandergillon.wegapi.client.Client"; */
+        const wchar_t JAVA_CMDLINE_START_CLIENT[] = L" -cp \"%s\" com.github.alexandergillon.wegapi.client.ClientDaemon -d \"%s\"";
 
         // The space at the front of these literals is REQUIRED. Else java will not receive parameters correctly.
         const wchar_t JAVA_CMDLINE_CLICKED[] = L" -cp .\\.gamedata\\wegapi.jar com.github.alexandergillon.wegapi.client.Client -c%d";

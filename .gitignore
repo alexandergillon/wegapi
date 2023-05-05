@@ -10,6 +10,10 @@ target/
 /src/main/c++/build/*
 !README.md
 /src/main/c++/cmake-build-debug
+/src/main/c++/out/
+
+### Visual Studio ###
+*.vs
 
 ### IntelliJ IDEA ###
 .idea/

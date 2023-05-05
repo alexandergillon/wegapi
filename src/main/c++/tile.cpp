@@ -1,9 +1,11 @@
-#include "constants.h"
 #include <Windows.h>
 #include <string>
 #include <iostream>
 #include <io.h>
 #include <fcntl.h>
+
+#include "constants.h"
+#include "helpers.h"
 
 // mallocs are not cleaned up as we will exit soon
 // todo: check more errors
@@ -65,14 +67,7 @@ namespace wegapi {
     }
 }
 
-/**
- * Waits for user input, so that they can read any error output. Intended for debugging/development.
- */
-static void wait_for_user() {
-    std::wcout << L"An error has occurred, and execution has been halted so that you can read the output. Enter anything to continue." << std::endl;
-    int i;
-    std::wcin >> i;
-}
+
 
 /**
  * Gets the filename of the currently running executable. For example, if the currently running executable is located
@@ -90,7 +85,7 @@ static wchar_t *get_my_filename() {
     wchar_t *my_filename = (wchar_t*)malloc(sizeof(wchar_t) * (1+wegapi::filenames::FILENAME_LENGTH));
     if (_wsplitpath_s(wpgmptr, NULL, 0, NULL, 0, my_filename, 1+wegapi::filenames::FILENAME_LENGTH, NULL, 0) != 0) {
         _wperror(L"Splitting my_filename failed");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
     return my_filename;
@@ -112,29 +107,13 @@ static wchar_t *get_other_filename(wchar_t *path) {
     wchar_t *other_filename = (wchar_t*)malloc(sizeof(wchar_t) * (1+wegapi::filenames::FILENAME_LENGTH));
     if (_wsplitpath_s(path, NULL, 0, NULL, 0, other_filename, 1+wegapi::filenames::FILENAME_LENGTH, NULL, 0) != 0) {
         _wperror(L"Splitting other_filename failed");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
     return other_filename;
 }
 
-/**
- * Finds a path for a Java executable, found via the PATH. No restrictions are placed on the Java executable that this
- * function returns (e.g. Java version). If Java cannot be found, prints an error message and aborts.\n \n
- *
- * @return a path for a Java executable, as a null-terminated wide character string
- */
-static wchar_t *get_java_path() {
-    // todo: perhaps enforce java version
-    DWORD java_path_length = SearchPathW(NULL, L"java", L".exe", 0, NULL, NULL);
-    wchar_t *java_path = (wchar_t*)malloc(sizeof(wchar_t ) * java_path_length);
-    java_path_length = SearchPathW(NULL, L"java", L".exe", java_path_length, java_path, NULL);
-    if (java_path_length == 0) {
-        MessageBoxW(NULL, (LPCWSTR)L"Java was not found on the PATH. Please add Java to the PATH.", NULL, MB_ICONERROR | MB_OK);
-        exit(EXIT_FAILURE);
-    }
-    return java_path;
-}
+
 
 /**
  * Launches the Java client, where the user has dragged one executable to another.
@@ -149,7 +128,7 @@ static void launch_java_dragged(wchar_t *java_path, int from_index, int to_index
 
     if (swprintf(cmdline, 1+cmdline_size, wegapi::java::JAVA_CMDLINE_DRAGGED, from_index, to_index) == -1) {
         _wperror(L"swprintf failed for dragged command-line parameters");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
 
@@ -167,7 +146,7 @@ static void launch_java_dragged(wchar_t *java_path, int from_index, int to_index
 
     if (!CreateProcessW(java_path, cmdline, NULL, NULL, false,  creationFlags, NULL, NULL, startupInfo, processInfo)) {
         _wperror(L"Launching Java failed");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
 
@@ -190,7 +169,7 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
 
     if (swprintf(cmdline, 1+cmdline_size, wegapi::java::JAVA_CMDLINE_CLICKED, clicked_index) == -1) {
         _wperror(L"swprintf failed for dragged command-line parameters");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
 
@@ -208,7 +187,7 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
 
     if (!CreateProcessW(java_path, cmdline, NULL, NULL, false,  creationFlags, NULL, NULL, startupInfo, processInfo)) {
         _wperror(L"Launching Java failed");
-        wait_for_user();
+        wegapi::wait_for_user();
         exit(EXIT_FAILURE);
     }
 
@@ -237,7 +216,6 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
  *
  * @param argc number of arguments - 1 or 2
  * @param argv argv[1] (OPTIONAL): path of another tile executable in the same directory
- * @return
  */
 int wmain(int argc, wchar_t* argv[]) {
     using namespace std; // todo: remove
@@ -246,7 +224,7 @@ int wmain(int argc, wchar_t* argv[]) {
     wchar_t *my_filename = get_my_filename();
 
     // Then, we find java
-    wchar_t *java_path = get_java_path();
+    wchar_t *java_path = wegapi::java::get_java_path();
 
     int my_index = wegapi::filename_to_index(my_filename);
 
