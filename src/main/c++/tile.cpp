@@ -132,29 +132,7 @@ static void launch_java_dragged(wchar_t *java_path, int from_index, int to_index
         exit(EXIT_FAILURE);
     }
 
-    STARTUPINFOW *startupInfo = (STARTUPINFOW*)calloc(1, sizeof(STARTUPINFO));
-    PROCESS_INFORMATION *processInfo = (PROCESS_INFORMATION*)calloc(1, sizeof(PROCESS_INFORMATION));
-
-#ifdef DEBUG
-    std::wcout << "Java command line:" << "\n";
-    std::wcout << "\t" << cmdline << "\n" << std::endl;
-    // For debugging, we don't want Java to run in a detached process, as we want to see its output.
-    DWORD creationFlags = 0;
-#else
-    DWORD creationFlags = CREATE_DEFAULT_ERROR_MODE | DETACHED_PROCESS;
-#endif
-
-    if (!CreateProcessW(java_path, cmdline, NULL, NULL, false,  creationFlags, NULL, NULL, startupInfo, processInfo)) {
-        _wperror(L"Launching Java failed");
-        wegapi::wait_for_user();
-        exit(EXIT_FAILURE);
-    }
-
-#ifdef DEBUG
-    std::wcout << L"Execution has been halted to read Java output. Enter anything to continue." << std::endl;
-    int i;
-    std::wcin >> i;
-#endif
+    wegapi::java::launch_java(java_path, cmdline);
 }
 
 /**
@@ -173,29 +151,7 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
         exit(EXIT_FAILURE);
     }
 
-    STARTUPINFOW *startupInfo = (STARTUPINFOW*)calloc(1, sizeof(STARTUPINFO));
-    PROCESS_INFORMATION *processInfo = (PROCESS_INFORMATION*)calloc(1, sizeof(PROCESS_INFORMATION));
-
-#ifdef DEBUG
-    std::wcout << "Java command line:" << "\n";
-    std::wcout << "\t" << cmdline << "\n" << std::endl;
-    // For debugging, we don't want Java to run in a detached process, as we want to see its output.
-    DWORD creationFlags = 0;
-#else
-    DWORD creationFlags = CREATE_DEFAULT_ERROR_MODE | DETACHED_PROCESS;
-#endif
-
-    if (!CreateProcessW(java_path, cmdline, NULL, NULL, false,  creationFlags, NULL, NULL, startupInfo, processInfo)) {
-        _wperror(L"Launching Java failed");
-        wegapi::wait_for_user();
-        exit(EXIT_FAILURE);
-    }
-
-#ifdef DEBUG
-    std::wcout << L"Execution has been halted to read Java output. Enter anything to continue." << std::endl;
-    int i;
-    std::wcin >> i;
-#endif
+    wegapi::java::launch_java(java_path, cmdline);
 }
 
 /**
