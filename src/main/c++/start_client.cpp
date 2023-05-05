@@ -153,7 +153,13 @@ static void back_to_forward_slashes(wchar_t *s) {
     wcscpy_s(s, 1+ wcslen(s), s_wstring.c_str());
 }
 
-// going to refactor soon
+/**
+ * Starts Java and launches the Client Daemon in the directory chosen by the user.
+ *
+ * @param java_path path to a Java executable
+ * @param jar_path path to the "wegapi.jar" file
+ * @param dir the directory that the user chose to start a game in
+ */
 static void launch_java(wchar_t *java_path, wchar_t *jar_path, wchar_t *dir) {
     back_to_forward_slashes(dir);
     int cmdline_size = _scwprintf(wegapi::java::JAVA_CMDLINE_START_CLIENT, jar_path, dir);

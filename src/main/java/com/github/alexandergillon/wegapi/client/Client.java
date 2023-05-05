@@ -6,23 +6,23 @@ Usage:
     -d<n> -t<m>: tile n dragged to m
     -i: init
 
+todo: handle multiple daemon
+
 todo: authentication / access tokens?
  */
 
 import java.net.MalformedURLException;
-import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.apache.commons.cli.*;
 
-import com.github.alexandergillon.wegapi.game.game_action.GameAction;
 import com.github.alexandergillon.wegapi.game.GameInterface;
 
 public class Client {
-    private int playerNumber; // todo: set up
-
     /**
      * Prints a help message and exits.
      */
@@ -47,12 +47,11 @@ public class Client {
     }
 
     /**
-     * Parses command-line arguments, and makes appropriate requests to the server.
+     * Parses command-line arguments, and makes appropriate requests to the client daemon.
      *
      * @param args the arguments to parse, from main
-     * @return a list of game actions to perform, based on the response from the server
      */
-    private static ArrayList<GameAction> parseArgsAndContactServer(String[] args) {
+    private static void parseArgsAndContactDaemon(String[] args) {
         Options options = new Options();
         options.addOption("i", "init", false, "Initialize this client");
         options.addOption("c", "clicked", true, "Index of tile clicked");
@@ -64,23 +63,22 @@ public class Client {
             CommandLine cmdline = parser.parse(options, args);
 
             if (cmdline.hasOption("i")) {
-                GameInterface server = connectToServer();
-                return server.clientInit();
+                GameInterface daemon = connectToDaemon();
+                daemon.clientInit();
             } else if (cmdline.hasOption("c")) {
                 int clickedIdx = Integer.parseInt(cmdline.getOptionValue("c"));
-                GameInterface server = connectToServer();
-                return server.tileClicked(clickedIdx, 0);
+                GameInterface daemon = connectToDaemon();
+                daemon.tileClicked(clickedIdx, 0);
             } else if (cmdline.hasOption("d") || cmdline.hasOption("t")) {
                 if (!(cmdline.hasOption("d") && cmdline.hasOption("t"))) {
                     printHelpAndExit("One of -d or -t was specified, but not the other.");
                 }
                 int draggedFrom = Integer.parseInt(cmdline.getOptionValue("d"));
                 int draggedTo = Integer.parseInt(cmdline.getOptionValue("t"));
-                GameInterface server = connectToServer();
-                return server.tileDragged(draggedFrom, draggedTo, 0);
+                GameInterface daemon = connectToDaemon();
+                daemon.tileDragged(draggedFrom, draggedTo, 0);
             } else {
                 printHelpAndExit("None of -c, -d, or -t were specified (required).");
-                return null;
             }
         } catch (ParseException e) {
             printHelpAndExit("ParseException: " + e.toString());
@@ -89,29 +87,34 @@ public class Client {
         } catch (RemoteException e) {
             printHelpAndExit("Encountered RemoteException while parsing arguments: " + e.toString());
         }
-        return null;
     }
 
     /**
-     * Connects to the server, returning a remote object that exports the ServerInterface interface.
+     * Connects to the client daemon, returning a remote object that exports the GameInterface interface.
      *
-     * @return The server, as a remote object that exports the ServerInterface interface
+     * @return The client daemon, as a remote object that exports the GameInterface interface
      */
-    private static GameInterface connectToServer() {
+    private static GameInterface connectToDaemon() {
         try {
-            return (GameInterface) Naming.lookup("//127.0.0.1:1099/gameServer");
+            return GameInterface.connectToDaemon(GameInterface.defaultIp, GameInterface.rmiRegistryPort);
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while connecting to server, %s%n", e.toString());
+            System.out.printf("RemoteException while connecting to daemon, %s%n", e.toString());
         } catch (NotBoundException e) {
-            System.out.printf("Server is not bound while connecting to server, %s%n", e.toString());
+            System.out.printf("Daemon is not bound while connecting, %s%n", e.toString());
+            try {
+                Arrays.asList(LocateRegistry.getRegistry().list()).forEach(System.out::println);
+            } catch (RemoteException eprime) {
+                eprime.printStackTrace();
+                System.exit(1);
+            }
         } catch (MalformedURLException e) {
-            System.out.printf("Malformed URL while connecting to server, %s%n", e.toString());
+            System.out.printf("Malformed URL while connecting to daemon, %s%n", e.toString());
         }
         System.exit(1);
         return null;
     }
 
     public static void main(String[] args) {
-        ArrayList<GameAction> actions = parseArgsAndContactServer(args);
+        parseArgsAndContactDaemon(args);
     }
 }
