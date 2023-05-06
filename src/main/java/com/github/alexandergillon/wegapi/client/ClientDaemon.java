@@ -1,5 +1,6 @@
 package com.github.alexandergillon.wegapi.client;
 
+import com.github.alexandergillon.wegapi.game.DaemonInterface;
 import com.github.alexandergillon.wegapi.game.GameInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
 import com.github.alexandergillon.wegapi.server.Server;
@@ -8,6 +9,7 @@ import org.apache.commons.cli.*;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -16,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 // todo: if lock is held, abort action
 
-public class ClientDaemon extends UnicastRemoteObject implements GameInterface, PlayerInterface {
+public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface {
     private final Path gameDir;
     private final ReentrantLock actionLock = new ReentrantLock(true);
     private final GameInterface server;
@@ -51,32 +53,18 @@ public class ClientDaemon extends UnicastRemoteObject implements GameInterface, 
     }
 
     /**
-     * This function is not likely to be called by Client for a while.
-     */
-    @Override
-    public void clientInit() {
-        System.out.println("daemon: client init received");
-        try {
-            server.clientInit();
-        } catch (RemoteException e) {
-            System.out.printf("RemoteException while forwarding clientInit to server, %s%n", e.toString());
-        }
-    }
-
-    /**
      * This function is called when the client has double-clicked a tile. For now, forwards
      * the request to the server.
      *
      * todo: concurrency control
      *
      * @param tile the index of the tile that the player clicked
-     * @param player which player clicked the tile
      */
     @Override
-    public void tileClicked(int tile, int player) {
-        System.out.printf("daemon: tile clicked: %d by player %d%n", tile, player);
+    public void tileClicked(int tile) {
+        System.out.printf("daemon: tile clicked: %d%n", tile);
         try {
-            server.tileClicked(tile, player);
+            server.tileClicked(tile, 0);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e.toString());
         }
@@ -90,13 +78,12 @@ public class ClientDaemon extends UnicastRemoteObject implements GameInterface, 
      *
      * @param fromTile the index of the tile that was dragged
      * @param toTile the index of the tile that the tile was dragged to
-     * @param player the player who dragged the tile
      */
     @Override
-    public void tileDragged(int fromTile, int toTile, int player) {
-        System.out.printf("daemon: tile dragged: from %d to %d by player %d%n", fromTile, toTile, player);
+    public void tileDragged(int fromTile, int toTile) {
+        System.out.printf("daemon: tile dragged: from %d to %d%n", fromTile, toTile);
         try {
-            server.tileDragged(fromTile, toTile, player);
+            server.tileDragged(fromTile, toTile, 0);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e.toString());
         }
@@ -154,19 +141,16 @@ public class ClientDaemon extends UnicastRemoteObject implements GameInterface, 
         } catch (RemoteException e) {
             System.out.printf("RemoteException while instantiating daemon: %s%n", e.toString());
             System.exit(1);
-        } catch (MalformedURLException e) {
-            System.out.printf("Malformed URL while connecting to server: %s%n", e.toString());
-            System.exit(1);
         }
 
         try {
-            LocateRegistry.createRegistry(GameInterface.rmiRegistryPort);
+            LocateRegistry.createRegistry(DaemonInterface.rmiRegistryPort);
         } catch (RemoteException ignore) {
             // RMI server already exists
         }
 
         try {
-            GameInterface.launchRMI(daemon, GameInterface.defaultIp, GameInterface.rmiRegistryPort, GameInterface.defaultDaemonPath);
+            Naming.rebind("//" + DaemonInterface.defaultIp + ":" + DaemonInterface.rmiRegistryPort + "/" + DaemonInterface.defaultDaemonPath, daemon);
         } catch (RemoteException e) {
             System.out.printf("Failed to rebind daemon, %s%n", e.toString());
             System.exit(1);

@@ -4,6 +4,7 @@ package com.github.alexandergillon.wegapi.server;
 import com.github.alexandergillon.wegapi.game.GameInterface;
 
 import java.net.MalformedURLException;
+import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
@@ -37,7 +38,7 @@ public class Server extends UnicastRemoteObject implements GameInterface {
 
         try {
             Server server = new Server();
-            GameInterface.launchRMI(server, GameInterface.defaultIp, GameInterface.rmiRegistryPort, GameInterface.defaultServerPath);
+            Naming.rebind("//" + GameInterface.defaultIp + ":" + GameInterface.rmiRegistryPort + "/" + GameInterface.defaultServerPath, server);
         } catch (RemoteException e) {
             System.out.printf("Failed to rebind server, %s%n", e);
             System.exit(1);

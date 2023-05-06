@@ -11,7 +11,6 @@ public interface GameInterface extends Remote {
     String defaultIp = "127.0.0.1";
     int rmiRegistryPort = 1099;
     String defaultServerPath = "WEGAPI/GameServer";
-    String defaultDaemonPath = "WEGAPI/ClientDaemon";
 
     class Tile {
         private final int index;
@@ -53,24 +52,11 @@ public interface GameInterface extends Remote {
      */
     void tileDragged(int fromTile, int toTile, int player) throws RemoteException;
 
-    static GameInterface connectToDaemon(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
-        return connect(ip, port, defaultDaemonPath);
-    }
-
     static GameInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
         return connect(ip, port, defaultServerPath);
     }
 
     static GameInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {
         return (GameInterface) Naming.lookup("//" + ip + ":" + port + "/" + path);
-    }
-
-    static void launchRMI(UnicastRemoteObject rmiObject, String ip, int port, String path) throws RemoteException, MalformedURLException {
-        try {
-            Naming.rebind("//" + ip + ":" + port + "/" + path, rmiObject);
-        } catch (RemoteException e) {
-            System.out.printf("Failed to rebind server, %s%n", e.toString());
-            System.exit(1);
-        }
     }
 }

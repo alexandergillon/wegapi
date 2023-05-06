@@ -20,7 +20,7 @@ import java.util.Arrays;
 
 import org.apache.commons.cli.*;
 
-import com.github.alexandergillon.wegapi.game.GameInterface;
+import com.github.alexandergillon.wegapi.game.DaemonInterface;
 
 public class Client {
     /**
@@ -30,7 +30,6 @@ public class Client {
         String helpMessage =
             "usage: java -cp wegapi.jar com.github.alexandergillon.wegapi.client.Client [options]\n" +
             "Valid options are as follows (com.github.alexandergillon.wegapi.client.Client is abbreviated to Client, for brevity):\n" +
-            "  java -cp wegapi.jar Client -i             Initialize this player (register with the server, and populate game directory)\n" +
             "  java -cp wegapi.jar Client -c<n>          This player double-clicked on tile n\n" +
             "  java -cp wegapi.jar Client -d<n> -t<m>    This player dragged tile n to tile m\n";
 
@@ -53,7 +52,6 @@ public class Client {
      */
     private static void parseArgsAndContactDaemon(String[] args) {
         Options options = new Options();
-        options.addOption("i", "init", false, "Initialize this client");
         options.addOption("c", "clicked", true, "Index of tile clicked");
         options.addOption("d", "dragged", true, "Index of dragged tile");
         options.addOption("t", "target", true, "Index of tile that was dragged onto");
@@ -62,21 +60,18 @@ public class Client {
         try {
             CommandLine cmdline = parser.parse(options, args);
 
-            if (cmdline.hasOption("i")) {
-                GameInterface daemon = connectToDaemon();
-                daemon.clientInit();
-            } else if (cmdline.hasOption("c")) {
+            if (cmdline.hasOption("c")) {
                 int clickedIdx = Integer.parseInt(cmdline.getOptionValue("c"));
-                GameInterface daemon = connectToDaemon();
-                daemon.tileClicked(clickedIdx, 0);
+                DaemonInterface daemon = connectToDaemon();
+                daemon.tileClicked(clickedIdx);
             } else if (cmdline.hasOption("d") || cmdline.hasOption("t")) {
                 if (!(cmdline.hasOption("d") && cmdline.hasOption("t"))) {
                     printHelpAndExit("One of -d or -t was specified, but not the other.");
                 }
                 int draggedFrom = Integer.parseInt(cmdline.getOptionValue("d"));
                 int draggedTo = Integer.parseInt(cmdline.getOptionValue("t"));
-                GameInterface daemon = connectToDaemon();
-                daemon.tileDragged(draggedFrom, draggedTo, 0);
+                DaemonInterface daemon = connectToDaemon();
+                daemon.tileDragged(draggedFrom, draggedTo);
             } else {
                 printHelpAndExit("None of -c, -d, or -t were specified (required).");
             }
@@ -90,13 +85,13 @@ public class Client {
     }
 
     /**
-     * Connects to the client daemon, returning a remote object that exports the GameInterface interface.
+     * Connects to the client daemon, returning a remote object that exports the DaemonInterface interface.
      *
-     * @return The client daemon, as a remote object that exports the GameInterface interface
+     * @return The client daemon, as a remote object that exports the DaemonInterface interface
      */
-    private static GameInterface connectToDaemon() {
+    private static DaemonInterface connectToDaemon() {
         try {
-            return GameInterface.connectToDaemon(GameInterface.defaultIp, GameInterface.rmiRegistryPort);
+            return DaemonInterface.connectToDaemon(DaemonInterface.defaultIp, DaemonInterface.rmiRegistryPort);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to daemon, %s%n", e.toString());
         } catch (NotBoundException e) {
