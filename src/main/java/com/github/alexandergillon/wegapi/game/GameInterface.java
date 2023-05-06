@@ -33,8 +33,6 @@ public interface GameInterface extends Remote {
 
     /**
      * Informs the server that a client has joined the game for the first time.
-     *
-     * @return GameActions that inform the client how to set up their local directory and state
      */
     void clientInit() throws RemoteException;
 
@@ -43,7 +41,6 @@ public interface GameInterface extends Remote {
      *
      * @param tile the index of the tile that the player clicked
      * @param player which player clicked the tile
-     * @return GameActions that inform the client how to update their local state, based on this action
      */
     void tileClicked(int tile, int player) throws RemoteException;
 
@@ -53,7 +50,6 @@ public interface GameInterface extends Remote {
      * @param fromTile the index of the tile that was dragged
      * @param toTile the index of the tile that the tile was dragged to
      * @param player the player who dragged the tile
-     * @return GameActions that inform the client how to update their local state, based on this action
      */
     void tileDragged(int fromTile, int toTile, int player) throws RemoteException;
 
