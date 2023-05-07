@@ -58,4 +58,28 @@ namespace wegapi {
         int i;
         std::wcin >> i;
     }
+
+    /**
+     * Check whether a path exists. If it doesn't, prints an error message. A file may not 'exist' for reasons such
+     * as invalid permissions, etc., in which case this function still prints an error and returns false.
+     *
+     * @param path path to check whether exists
+     * @param error_message_user error message to print, if the file doens't exist
+     * @return whether the file exists
+     */
+    bool check_exists(wchar_t *path, const wchar_t *error_message_user) {
+        using namespace std;
+        if (GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) {
+            wstring error_message_user_w(error_message_user);
+            wcout << error_message_user_w << ":\n\t";
+
+            DWORD error = GetLastError();
+            string error_message_sys = std::system_category().message(error);
+            wstring error_message_sys_w(error_message_sys.begin(), error_message_sys.end());
+            wcout << error_message_sys_w << endl;
+            wait_for_user();
+            return false;
+        }
+        return true;
+    }
 }

@@ -43,12 +43,7 @@ static wchar_t *get_wegapi_jar() {
     }
 
     // Check it actually exists
-    if (GetFileAttributesW(wegapi_path) == INVALID_FILE_ATTRIBUTES) {
-        DWORD error = GetLastError();
-        std::string error_message = std::system_category().message(error);
-        std::wstring error_message_wstring(error_message.begin(), error_message.end());
-        std::wcout << error_message_wstring << std::endl;
-        wegapi::wait_for_user();
+    if (!wegapi::check_exists(wegapi_path, L"Can't find wegapi.jar")) {
         exit(EXIT_FAILURE); // todo: instead search for default install
     }
 
@@ -70,7 +65,7 @@ static bool check_success(HRESULT hr) {
         LPCWSTR errorMessage = error.ErrorMessage();
 
         _setmode(_fileno(stdout), _O_U16TEXT);
-        std::wcout << "error: ";
+        std::wcout << L"error: ";
         wprintf(errorMessage);
         std::wcout << std::endl;
 
@@ -194,4 +189,6 @@ int wmain() {
 
     launch_java(java_path, wegapi_jar, game_dir);
     CoTaskMemFree(game_dir);
+
+    exit(EXIT_SUCCESS);
 }

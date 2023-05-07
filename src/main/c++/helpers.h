@@ -7,4 +7,5 @@ namespace wegapi {
     }
 
     void wait_for_user();
+    bool check_exists(wchar_t *path, const wchar_t *error_message);
 }

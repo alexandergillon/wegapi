@@ -21,3 +21,7 @@ add_executable(aaaaa
 add_executable(start_client
         start_client.cpp
         helpers.cpp)
+
+add_executable(create_tiles
+        create_tiles.cpp
+        helpers.cpp)
