@@ -2,9 +2,18 @@
 #include <string>
 #include <stdexcept>
 #include <iostream>
+#include <filesystem>
+#include <pathcch.h>
+#include <shlwapi.h>
 
 #include "constants.h"
 #include "helpers.h"
+
+// devenv /debugexe create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
+// C:\Users\alexa\OneDrive\Misc\Projects\wegapi\src\main\c++\bin\Debug 0:black-king-cream,1:black-king-olive
+
+// todo: / vs \ in paths
+// todo: check more syscalls
 
 namespace {
     enum Mode {
@@ -80,19 +89,16 @@ static std::wstring mode_to_string(Mode mode) {
 /**
  * Prints the parsed arguments of the program.
  *
- * @param dir the directory string, from argv
+ * @param game_dir the game directory string, from argv
  * @param parsed_data map representing parsed tile data
  * @param mode parsed mode
  */
-static void print_args(wchar_t *dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& parsed_data, Mode mode) {
+static void print_args(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& parsed_data, Mode mode) {
     using namespace std;
-    wcout << L"dir: " << wstring(dir) << L"\n";
+    wcout << L"dir: " << wstring(game_dir) << L"\n";
     wcout << L"map: " << L"\n";
-    for (auto elem : parsed_data) {
-        wstring icon_name = elem.first;
-        auto tiles = elem.second;
-
-        wcout << L"\t" << elem.first << ": [";
+    for (auto& [icon_name, tiles] : parsed_data) {
+        wcout << L"\t" << icon_name << ": [";
         for (auto pair : tiles) {
             wcout << L"(" << pair.first << ", " << (pair.second == NULL ? L"NULL" : std::wstring(pair.second)) << L"), ";
         }
@@ -202,6 +208,151 @@ static Mode parse_option(wchar_t *option) {
     }
 }
 
+static wchar_t *validate_icon_name(std::wstring icon_name) {
+    size_t icon_name_wchar_size = 1 + icon_name.size();
+    wchar_t *icon_name_wchar = (wchar_t*)malloc(sizeof(wchar_t) * icon_name_wchar_size);
+    wcscpy_s(icon_name_wchar, icon_name_wchar_size, icon_name.c_str());
+
+    wchar_t *extension = PathFindExtensionW(icon_name_wchar);
+    if (*extension != L'\0') {
+        // name has an extension
+        if (wcsncmp(extension, L".ico", 5) != 0) { // compare 1 extra char so we don't get false positives
+            parse_error(L"Icon name " + icon_name + L" has an extension other than .ico");
+        }
+    }
+
+    HRESULT hr = PathCchRemoveExtension(icon_name_wchar, icon_name_wchar_size);
+    if (!(hr == S_OK || hr == S_FALSE)) {
+        wegapi::check_success(hr, L"PathCchRemoveExtension");
+        exit(EXIT_FAILURE);
+    }
+
+    return icon_name_wchar;
+}
+
+static wchar_t *get_icon_path(wchar_t *game_dir, wchar_t *icon_name) {
+    wchar_t *icon_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
+    wcscpy_s(icon_path, 1+_MAX_PATH, game_dir);
+
+    HRESULT hr = PathCchAppend(icon_path, 1+_MAX_PATH, L"\\.gamedata\\resources\\");
+    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+        exit(EXIT_FAILURE);
+    }
+
+    hr = PathCchAppend(icon_path, 1+_MAX_PATH, icon_name);
+    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+        exit(EXIT_FAILURE);
+    }
+
+    wcscat_s(icon_path, 1+_MAX_PATH, L".ico");
+
+    return icon_path;
+}
+
+static void *memory_map_icon(wchar_t *icon_path, HANDLE& icon, HANDLE& icon_file_mapped, DWORD& icon_size) {
+    icon = CreateFileW(icon_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (icon == INVALID_HANDLE_VALUE) {
+        wegapi::print_last_error((std::wstring(L"memory_map_icon, CreateFileW on ") + std::wstring(icon_path)).c_str()); // ugly
+        exit(EXIT_FAILURE);
+    }
+
+    DWORD file_size_high;
+    DWORD file_size_low = GetFileSize(icon, &file_size_high);
+    // if either of file_size_high/file_size_low are non-zero, (file_size_high | file_size_low) will be non-zero
+    if ((file_size_high | file_size_low) == 0) {
+        // file is empty
+        std::wcout << L"Error: icon " << std::wstring(icon_path) << L" is empty." << std::endl;
+        wegapi::wait_for_user();
+        CloseHandle(icon);
+        exit(EXIT_FAILURE);
+    } else if (file_size_high != 0) {
+        // file is too large
+        std::wcout << L"Error: icon " << std::wstring(icon_path) << L" is too large." << std::endl;
+        wegapi::wait_for_user();
+        CloseHandle(icon);
+        exit(EXIT_FAILURE);
+    }
+    icon_size = file_size_low;
+
+    icon_file_mapped = CreateFileMappingW(icon, NULL, PAGE_READONLY, 0, 0, NULL);
+    if (icon_file_mapped == NULL) {
+        wegapi::print_last_error(L"memory_map_icon, CreateFileMappingW");
+        CloseHandle(icon);
+        exit(EXIT_FAILURE);
+    }
+
+    void *icon_memory_mapping = MapViewOfFile(icon_file_mapped, FILE_MAP_READ, 0, 0, 0);
+    if (icon_memory_mapping == NULL) {
+        wegapi::print_last_error(L"memory_map_icon, MapViewOfFile");
+        CloseHandle(icon);
+        CloseHandle(icon_file_mapped);
+        exit(EXIT_FAILURE);
+    }
+
+    return icon_memory_mapping;
+}
+
+static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]] wchar_t *tile_visible_name) {
+    // todo: incorporate visible name
+    wchar_t *tile_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
+    wcscpy_s(tile_path, 1+_MAX_PATH, game_dir);
+
+    wchar_t *tile_name = wegapi::filenames::index_to_filename_exe(index);
+    HRESULT hr = PathCchAppend(tile_path, 1+_MAX_PATH, tile_name);
+
+    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+        exit(EXIT_FAILURE);
+    }
+
+    std::wcout << L"tile_path: " << std::wstring(tile_path) << std::endl;
+
+    return tile_path;
+}
+
+static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, std::vector<std::pair<int32_t, wchar_t*>>& tiles) {
+    wchar_t *icon_name_wchar = validate_icon_name(icon_name);
+    wchar_t *icon_path = get_icon_path(game_dir, icon_name_wchar);
+
+    HANDLE icon;  // must be closed
+    HANDLE icon_file_mapped; // must be closed
+    DWORD icon_size;
+    void *icon_memory_mapping = memory_map_icon(icon_path, icon, icon_file_mapped, icon_size); // must be unmapped
+
+    for (auto& [index, name] : tiles) {
+        wchar_t *tile_path = get_tile_path(game_dir, index, name);
+        HANDLE resource = BeginUpdateResourceW(tile_path, FALSE);
+        if (resource == NULL) {
+            wegapi::print_last_error((std::wstring(L"create_tiles_with_icon, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
+            continue;
+        }
+
+        if (!UpdateResourceW(resource, RT_GROUP_ICON, RT_GROUP_ICON, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_memory_mapping, icon_size)) {
+            wegapi::print_last_error(L"create_tiles_with_icon, UpdateResourceW");
+            CloseHandle(resource);
+            continue;
+        }
+
+        if (!EndUpdateResource(resource, FALSE)) {
+            wegapi::print_last_error(L"create_tiles_with_icon, EndUpdateResource");
+            CloseHandle(resource);
+            continue;
+        }
+
+        CloseHandle(resource);
+    }
+
+    UnmapViewOfFile(icon_memory_mapping);
+    CloseHandle(icon_file_mapped);
+    CloseHandle(icon);
+}
+
+static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& data, [[maybe_unused]] Mode mode) {
+    // todo: incorporate mode
+    for (auto& [icon_name, tiles] : data) {
+        create_tiles_with_icon(game_dir, icon_name, tiles);
+    }
+}
+
 /**
  * Main function. Creates tiles based on command-line arguments (TODO: not yet implemented, only arg parsing for now).
  *
@@ -212,7 +363,7 @@ static Mode parse_option(wchar_t *option) {
  *                -o specifies tiles should only be created if they already exist.
  */
 int wmain(int argc, wchar_t* argv[]) {
-    wchar_t *dir = argv[1];
+    wchar_t *game_dir = argv[1];
     wchar_t *data = argv[2];
     wchar_t *option = NULL;
 
@@ -222,7 +373,7 @@ int wmain(int argc, wchar_t* argv[]) {
         option = argv[3];
     }
 
-    if (!wegapi::check_exists(dir, L"create_tiles: game directory doesn't exist")) {
+    if (!wegapi::check_exists(game_dir, L"create_tiles: game directory doesn't exist")) {
         exit(EXIT_FAILURE);
     }
 
@@ -230,6 +381,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
     Mode mode = parse_option(option);
 
-    print_args(dir, parsed_data, mode);
+    print_args(game_dir, parsed_data, mode);
+    create_tiles(game_dir, parsed_data, mode);
     exit(EXIT_SUCCESS);
 }

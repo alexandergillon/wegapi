@@ -25,3 +25,7 @@ add_executable(start_client
 add_executable(create_tiles
         create_tiles.cpp
         helpers.cpp)
+
+target_link_libraries(create_tiles
+        Shlwapi
+        Pathcch)

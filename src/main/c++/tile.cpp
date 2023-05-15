@@ -14,59 +14,6 @@
 
 // testing parsing unicode filenames: cl /std:c++17 /EHsc tile.cpp -o 诶娜迪艾伊吾.exe
 
-/** Converts a filename to its lexicographic index in a directory, as if all possible filenames were present.
- * Possible filenames are permutations of a fixed size (wegapi::filenames::FILENAME_LENGTH), over a fixed set of
- * characters (defined in wegapi::filenames::characters).\n \n
- *
- * For example, if the character set is ABC, and filenames are of length 3, then:
- * \verbatim
- *   filename_to_index(L"AAA") = 0,
- *   filename_to_index(L"AAB") = 1,
- *   filename_to_index(L"AAC") = 2,
- *   filename_to_index(L"ABA") = 3
- * \endverbatim
- * and so on. \n \n
- *
- * Requires inputs to be of length wegapi::filenames::FILENAME_LENGTH to produce correct results. Else, index
- * is calculated as if only the first wegapi::filenames::FILENAME_LENGTH characters are present. Also
- * requires that inputs only use characters in the character set.
- *
- * @param filename filename to convert: must be of length wegapi::filenames::FILENAME_LENGTH, and only use
- *                 characters defined in wegapi::filenames::characters
- * @return index of that filename
- */
-static int32_t filename_to_index(wchar_t *filename) {
-#ifdef DEBUG
-    // Length has already been validated in main
-    if (wcslen(filename) != wegapi::filenames::FILENAME_LENGTH) {
-        std::wcout << wcslen(filename) << std::endl;
-        MessageBoxW(NULL, (LPCWSTR)L"Invalid filename length.", NULL, MB_ICONERROR | MB_OK);
-        exit(EXIT_FAILURE);
-    }
-
-    try {
-#endif
-
-    int32_t total = 0;
-    int32_t pow = 1;
-
-    // Essentially, we view the filename as a base `wegapi::filenames::FILENAME_LENGTH` string
-    for (int i = wegapi::filenames::FILENAME_LENGTH - 1; i >= 0; i--) {
-        total += wegapi::filenames::characters::wchar_to_sort_order.at(filename[i]) * pow;
-        pow *= wegapi::filenames::FILENAME_LENGTH;
-    }
-    return total;
-
-#ifdef DEBUG
-    } catch ([[maybe_unused]] const std::out_of_range& _) {
-        MessageBoxW(NULL, (LPCWSTR)L"Invalid characters in filename.", NULL, MB_ICONERROR | MB_OK);
-        exit(EXIT_FAILURE);
-    }
-#endif
-}
-
-
-
 /**
  * Gets the filename of the currently running executable. For example, if the currently running executable is located
  * at "C:\Windows\System32\filename.exe", this would return "filename". \n \n
@@ -180,11 +127,11 @@ int wmain(int argc, wchar_t* argv[]) {
     // Then, we find java
     wchar_t *java_path = wegapi::java::get_java_path();
 
-    int my_index = filename_to_index(my_filename);
+    int my_index = wegapi::filenames::filename_to_index(my_filename);
 
     if (argc == 2) {
         wchar_t *other_filename = get_other_filename(argv[1]);
-        int other_index = filename_to_index(other_filename);
+        int other_index = wegapi::filenames::filename_to_index(other_filename);
         launch_java_dragged(java_path, other_index, my_index);
         exit(EXIT_SUCCESS);
     } else if (argc == 1) {

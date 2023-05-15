@@ -34,10 +34,10 @@ namespace wegapi {
 
             static const std::unordered_map<int, wchar_t> sort_order_to_wchar = {
                 {0, three_per_em_space},
-                {0, four_per_em_space},
-                {0, six_per_em_space},
-                {0, thin_space},
-                {0, hair_space}
+                {1, four_per_em_space},
+                {2, six_per_em_space},
+                {3, thin_space},
+                {4, hair_space}
             };
         }
     }

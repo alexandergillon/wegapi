@@ -4,7 +4,7 @@
 #include <regex>
 #include <io.h>
 #include <fcntl.h>
-#include <shobjidl.h>
+#include <ShObjIdl.h>
 #include <comdef.h>
 
 #include "constants.h"
@@ -36,7 +36,7 @@ static wchar_t *get_wegapi_jar() {
 
     // Get the path where wegapi.jar should be
     wchar_t *wegapi_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
-    if (_wmakepath_s(wegapi_path, 1+_MAX_PATH, drive, dir_without_drive, wegapi_filename, wegapi_fileext)) {
+    if (_wmakepath_s(wegapi_path, 1+_MAX_PATH, drive, dir_without_drive, wegapi_filename, wegapi_fileext)) { // todo: try with larger buffers?
         _wperror(L"Making path failed");
         wegapi::wait_for_user();
         exit(EXIT_FAILURE); // todo: instead search for default install
@@ -50,30 +50,7 @@ static wchar_t *get_wegapi_jar() {
     return wegapi_path;
 }
 
-/**
- * Checks whether a Win32 API call succeeded, based on its return value. If it failed, prints an error message,
- * and pauses execution so that the user can read the error message. \n \n
- *
- * @param hr the return value of a Win32 API call
- * @return whether that call succeeded
- */
-static bool check_success(HRESULT hr) {
-    bool success = SUCCEEDED(hr);
 
-    if (!success) {
-        _com_error error(hr);
-        LPCWSTR errorMessage = error.ErrorMessage();
-
-        _setmode(_fileno(stdout), _O_U16TEXT);
-        std::wcout << L"error: ";
-        wprintf(errorMessage);
-        std::wcout << std::endl;
-
-        wegapi::wait_for_user();
-    }
-
-    return success;
-}
 
 /**
  * Allows the user to pick a folder in the filesystem, and returns its path. If the user did not pick a folder (by
@@ -96,35 +73,35 @@ static wchar_t *get_folder_from_user() {
     wchar_t *filePath = NULL;
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
-    if (!check_success(hr)) goto nocleanup;
+    if (!wegapi::check_success(hr, L"CoInitializeEx")) goto nocleanup;
 
     IFileOpenDialog *fileOpenDialog;
     hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
                           IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
 
-    if (!check_success(hr)) goto cleanup_uninitialize;
+    if (!wegapi::check_success(hr, L"CoCreateInstance")) goto cleanup_uninitialize;
 
     DWORD flags;
     hr = fileOpenDialog->GetOptions(&flags);
 
-    if (!check_success(hr)) goto cleanup_releaseFileDialog;
+    if (!wegapi::check_success(hr, L"fileOpenDialog->GetOptions")) goto cleanup_releaseFileDialog;
 
     // only allow user to pick folders
     hr = fileOpenDialog->SetOptions(flags | FOS_PICKFOLDERS | FOS_NOCHANGEDIR | FOS_FORCEFILESYSTEM | FOS_OKBUTTONNEEDSINTERACTION);
 
-    if (!check_success(hr)) goto cleanup_releaseFileDialog;
+    if (!wegapi::check_success(hr, L"fileOpenDialog->SetOptions")) goto cleanup_releaseFileDialog;
 
     hr = fileOpenDialog->Show(NULL); // show user the dialog
 
-    if (!check_success(hr)) goto cleanup_releaseFileDialog;
+    if (!wegapi::check_success(hr, L"fileOpenDialog->Show")) goto cleanup_releaseFileDialog; // todo: handle cancelled selection
 
     IShellItem *shellItem;
     hr = fileOpenDialog->GetResult(&shellItem);
 
-    if (!check_success(hr)) goto cleanup_releaseFileDialog;
+    if (!wegapi::check_success(hr, L"fileOpenDialog->GetResult")) goto cleanup_releaseFileDialog;
 
     hr = shellItem->GetDisplayName(SIGDN_FILESYSPATH, &filePath); // get the path of the folder they chose
-    if (!check_success(hr)) {
+    if (!wegapi::check_success(hr, L"shellItem->GetDisplayName")) {
         filePath = NULL;
     }
 
