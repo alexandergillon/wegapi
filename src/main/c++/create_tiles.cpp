@@ -8,9 +8,13 @@
 
 #include "constants.h"
 #include "helpers.h"
+#include "ico_parser.h"
 
-// devenv /debugexe create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
+// create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
+// create_tiles.exe %cd% 0:black-king-cream && ie4uinit.exe -show
 // C:\Users\alexa\OneDrive\Misc\Projects\wegapi\src\main\c++\bin\Debug 0:black-king-cream,1:black-king-olive
+
+// ie4uinit.exe -show
 
 // todo: / vs \ in paths
 // todo: check more syscalls
@@ -21,6 +25,7 @@ namespace {
         WEGAPI_CREATE_NEW,
         WEGAPI_OVERWRITE_EXISTING
     };
+    const DWORD ICONDIR_RESOURCE_NUMBER = 1;
 }
 
 /**
@@ -249,49 +254,6 @@ static wchar_t *get_icon_path(wchar_t *game_dir, wchar_t *icon_name) {
     return icon_path;
 }
 
-static void *memory_map_icon(wchar_t *icon_path, HANDLE& icon, HANDLE& icon_file_mapped, DWORD& icon_size) {
-    icon = CreateFileW(icon_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (icon == INVALID_HANDLE_VALUE) {
-        wegapi::print_last_error((std::wstring(L"memory_map_icon, CreateFileW on ") + std::wstring(icon_path)).c_str()); // ugly
-        exit(EXIT_FAILURE);
-    }
-
-    DWORD file_size_high;
-    DWORD file_size_low = GetFileSize(icon, &file_size_high);
-    // if either of file_size_high/file_size_low are non-zero, (file_size_high | file_size_low) will be non-zero
-    if ((file_size_high | file_size_low) == 0) {
-        // file is empty
-        std::wcout << L"Error: icon " << std::wstring(icon_path) << L" is empty." << std::endl;
-        wegapi::wait_for_user();
-        CloseHandle(icon);
-        exit(EXIT_FAILURE);
-    } else if (file_size_high != 0) {
-        // file is too large
-        std::wcout << L"Error: icon " << std::wstring(icon_path) << L" is too large." << std::endl;
-        wegapi::wait_for_user();
-        CloseHandle(icon);
-        exit(EXIT_FAILURE);
-    }
-    icon_size = file_size_low;
-
-    icon_file_mapped = CreateFileMappingW(icon, NULL, PAGE_READONLY, 0, 0, NULL);
-    if (icon_file_mapped == NULL) {
-        wegapi::print_last_error(L"memory_map_icon, CreateFileMappingW");
-        CloseHandle(icon);
-        exit(EXIT_FAILURE);
-    }
-
-    void *icon_memory_mapping = MapViewOfFile(icon_file_mapped, FILE_MAP_READ, 0, 0, 0);
-    if (icon_memory_mapping == NULL) {
-        wegapi::print_last_error(L"memory_map_icon, MapViewOfFile");
-        CloseHandle(icon);
-        CloseHandle(icon_file_mapped);
-        exit(EXIT_FAILURE);
-    }
-
-    return icon_memory_mapping;
-}
-
 static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]] wchar_t *tile_visible_name) {
     // todo: incorporate visible name
     wchar_t *tile_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
@@ -309,45 +271,55 @@ static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]]
     return tile_path;
 }
 
+static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data) {
+    // todo: create tile with name if it doesn't exist
+    wchar_t *tile_path = get_tile_path(game_dir, index, name);
+
+    HANDLE exe = BeginUpdateResourceW(tile_path, FALSE);
+    if (exe == NULL) {
+        wegapi::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
+        return;
+    }
+
+    if (!UpdateResourceW(exe, RT_GROUP_ICON, MAKEINTRESOURCEW(ICONDIR_RESOURCE_NUMBER),
+                         MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_resource_data.header, icon_resource_data.header_size)) {
+        wegapi::print_last_error(L"create_tile, UpdateResourceW header");
+        CloseHandle(exe);
+        return;
+    }
+
+    for (wegapi::icons::RT_ICON_DATA image : icon_resource_data.images) {
+        if (!UpdateResourceW(exe, RT_ICON, MAKEINTRESOURCEW(image.resource_number),
+                             MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), image.data, image.size)) {
+            wegapi::print_last_error(L"create_tile, UpdateResourceW image");
+            CloseHandle(exe);
+            return;
+        }
+    }
+
+    if (!EndUpdateResource(exe, FALSE)) {
+        wegapi::print_last_error(L"create_tile, EndUpdateResource");
+        CloseHandle(exe);
+        return;
+    }
+
+    CloseHandle(exe);
+}
+
 static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, std::vector<std::pair<int32_t, wchar_t*>>& tiles) {
     wchar_t *icon_name_wchar = validate_icon_name(icon_name);
     wchar_t *icon_path = get_icon_path(game_dir, icon_name_wchar);
 
-    HANDLE icon;  // must be closed
-    HANDLE icon_file_mapped; // must be closed
-    DWORD icon_size;
-    void *icon_memory_mapping = memory_map_icon(icon_path, icon, icon_file_mapped, icon_size); // must be unmapped
+    wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data = wegapi::icons::ico_to_icon_resource(icon_path);
 
     for (auto& [index, name] : tiles) {
-        wchar_t *tile_path = get_tile_path(game_dir, index, name);
-        HANDLE resource = BeginUpdateResourceW(tile_path, FALSE);
-        if (resource == NULL) {
-            wegapi::print_last_error((std::wstring(L"create_tiles_with_icon, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
-            continue;
-        }
-
-        if (!UpdateResourceW(resource, RT_GROUP_ICON, RT_GROUP_ICON, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_memory_mapping, icon_size)) {
-            wegapi::print_last_error(L"create_tiles_with_icon, UpdateResourceW");
-            CloseHandle(resource);
-            continue;
-        }
-
-        if (!EndUpdateResource(resource, FALSE)) {
-            wegapi::print_last_error(L"create_tiles_with_icon, EndUpdateResource");
-            CloseHandle(resource);
-            continue;
-        }
-
-        CloseHandle(resource);
+        // todo: create tile with name if it doesn't exist
+        create_tile(game_dir, index, name, icon_resource_data);
     }
-
-    UnmapViewOfFile(icon_memory_mapping);
-    CloseHandle(icon_file_mapped);
-    CloseHandle(icon);
 }
 
 static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& data, [[maybe_unused]] Mode mode) {
-    // todo: incorporate mode
+    // todo: incorporate mode and create non-existent tiles
     for (auto& [icon_name, tiles] : data) {
         create_tiles_with_icon(game_dir, icon_name, tiles);
     }

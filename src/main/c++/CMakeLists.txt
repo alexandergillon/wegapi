@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
 if(MSVC)
-    add_compile_options(/EHsc /W4 /WX /DDEBUG /DUNICODE /D_UNICODE) # ASAN: /fsanitize=address /Zi
+    add_compile_options(/EHsc /W4 /WX /DDEBUG /DUNICODE /D_UNICODE /fsanitize=address /Zi) # ASAN: /fsanitize=address /Zi
 else()
     if(NOT WIN32)
         message(FATAL_ERROR "wegapi is only supported on Windows, as it relies on the Windows API.")
@@ -24,7 +24,8 @@ add_executable(start_client
 
 add_executable(create_tiles
         create_tiles.cpp
-        helpers.cpp)
+        helpers.cpp
+        ico_parser.cpp)
 
 target_link_libraries(create_tiles
         Shlwapi
