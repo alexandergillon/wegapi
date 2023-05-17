@@ -119,7 +119,7 @@ namespace wegapi {
             return filename;
         }
 
-        wchar_t *index_to_filename_exe(int32_t index) {
+        wchar_t *index_to_filename_with_exe(int32_t index) {
             wchar_t *filename_without_exe = index_to_filename(index);
             size_t filename_with_exe_size = wcslen(filename_without_exe) + 4 + 1; // 4 for .exe, 1 for null terminator
             wchar_t *filename_with_exe = (wchar_t*)malloc(sizeof(wchar_t) * filename_with_exe_size);

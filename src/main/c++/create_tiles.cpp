@@ -18,6 +18,9 @@
 
 // todo: / vs \ in paths
 // todo: check more syscalls
+// todo: wstring everywhere?
+// todo: memory leaks not handled as program will shortly exit
+// todo: more than max_dir
 
 namespace {
     enum Mode {
@@ -129,13 +132,13 @@ static void print_args(wchar_t *game_dir, std::unordered_map<std::wstring, std::
  * On error (invalid token), prints an error message and exits.
  */
 static void parse_token(std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& out, wchar_t *token) {
-    wchar_t *wcstok_buffer;
+    wchar_t *wcstok_context;
 
-    wchar_t *index_input = wcstok_s(token, L":", &wcstok_buffer);
-    if (index_input == NULL) {
+    wchar_t *index_wchar = wcstok_s(token, L":", &wcstok_context);
+    if (index_wchar == NULL) {
         parse_error(L"Index of some tile is not present.");
     }
-    std::wstring index_wstring(index_input);
+    std::wstring index_wstring(index_wchar);
     int32_t index;
     try {
         index = std::stoi(index_wstring);
@@ -145,16 +148,16 @@ static void parse_token(std::unordered_map<std::wstring, std::vector<std::pair<i
         parse_error(L"Index " + index_wstring + L" is out of range.");
     }
 
-    wchar_t *icon_name = wcstok_s(NULL, L":", &wcstok_buffer);
+    wchar_t *icon_name = wcstok_s(NULL, L":", &wcstok_context);
     if (icon_name == NULL) {
         parse_error(L"Icon name of some tile is not present.");
     }
     std::wstring icon_name_wstring(icon_name);
 
     // If null, no tile name. We are ok to pass this directly to the map, as NULL there indicates no tile name.
-    wchar_t *tile_name = wcstok_s(NULL, L":", &wcstok_buffer);
+    wchar_t *tile_name = wcstok_s(NULL, L":", &wcstok_context);
     if (tile_name != NULL) {
-        wchar_t *fourth_component = wcstok_s(NULL, L":", &wcstok_buffer);
+        wchar_t *fourth_component = wcstok_s(NULL, L":", &wcstok_context);
         if (fourth_component != NULL) {
             parse_error(L"Unrecognized 4th component of tile: " + std::wstring(fourth_component));
         }
@@ -168,7 +171,7 @@ static void parse_token(std::unordered_map<std::wstring, std::vector<std::pair<i
  * Parses the data argument of the program, returning a map that contains the tiles that need to be created. \n \n
  *
  * The map returned is a map from icon file names to a pair (index, tile_name), where index is the index of the
- * tile to be created, and tile_name is the name of the tile to be created. tile_name may be null, in which case the
+ * tile to be created, and tile_name is the name of the tile to be created. tile_name may be NULL, in which case the
  * tile will be created without a name. \n \n
  *
  * Input data is given in the form of comma-separated 'tiles'. See parse_error's help message for more information
@@ -213,6 +216,16 @@ static Mode parse_option(wchar_t *option) {
     }
 }
 
+/**
+ * Validates that a filename could be a .ico file. This is when it has the .ico extension, or no extension. \n \n
+ *
+ * Returns the filename with .ico removed, if it was present. \n \n
+ *
+ * On error, prints a message and exits.
+ *
+ * @param icon_name the filename to validate
+ * @return the input with .ico removed, if it was present.
+ */
 static wchar_t *validate_icon_name(std::wstring icon_name) {
     size_t icon_name_wchar_size = 1 + icon_name.size();
     wchar_t *icon_name_wchar = (wchar_t*)malloc(sizeof(wchar_t) * icon_name_wchar_size);
@@ -235,6 +248,15 @@ static wchar_t *validate_icon_name(std::wstring icon_name) {
     return icon_name_wchar;
 }
 
+/**
+ * Get the path for an icon, from its name and the game directory. Icons are stored in .\\.gamedata\\resources. \n \n
+ *
+ * On error, prints an error message and exits.
+ *
+ * @param game_dir the game directory
+ * @param icon_name the name of the icon
+ * @return the path of the icon, as a NULL-terminated wide character string
+ */
 static wchar_t *get_icon_path(wchar_t *game_dir, wchar_t *icon_name) {
     wchar_t *icon_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
     wcscpy_s(icon_path, 1+_MAX_PATH, game_dir);
@@ -249,28 +271,46 @@ static wchar_t *get_icon_path(wchar_t *game_dir, wchar_t *icon_name) {
         exit(EXIT_FAILURE);
     }
 
+    // PathCchAppend adds an extra slash, which doesn't work. e.g /.gamedata/resources/name/.ico
     wcscat_s(icon_path, 1+_MAX_PATH, L".ico");
 
     return icon_path;
 }
 
+/**
+ * Get the path of a tile, from the game directory, its index, and it's name. \n \n
+ *
+ * On error, prints an error message and exits.
+ *
+ * @param game_dir the game directory
+ * @param index the index of the tile to get the path of
+ * @param tile_visible_name the name that the player of the game will see on the tile (can be NULL, in which case the
+ *                          tile has no name)
+ * @return the path of the tile
+ */
 static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]] wchar_t *tile_visible_name) {
     // todo: incorporate visible name
     wchar_t *tile_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
     wcscpy_s(tile_path, 1+_MAX_PATH, game_dir);
 
-    wchar_t *tile_name = wegapi::filenames::index_to_filename_exe(index);
+    wchar_t *tile_name = wegapi::filenames::index_to_filename_with_exe(index);
     HRESULT hr = PathCchAppend(tile_path, 1+_MAX_PATH, tile_name);
 
     if (!wegapi::check_success(hr, L"PathCchAppend")) {
         exit(EXIT_FAILURE);
     }
 
-    std::wcout << L"tile_path: " << std::wstring(tile_path) << std::endl;
-
     return tile_path;
 }
 
+/**
+ * Creates a tile with a specified index, icon and name.
+ *
+ * @param game_dir the game directory
+ * @param index index of the tile to create
+ * @param name name of the tile to create
+ * @param icon_resource_data data describing the icon of the tile, as parsed by wegapi::icons::ico_to_icon_resource
+ */
 static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data) {
     // todo: create tile with name if it doesn't exist
     wchar_t *tile_path = get_tile_path(game_dir, index, name);
@@ -281,6 +321,7 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
         return;
     }
 
+    // update the icon directory in the executable
     if (!UpdateResourceW(exe, RT_GROUP_ICON, MAKEINTRESOURCEW(ICONDIR_RESOURCE_NUMBER),
                          MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_resource_data.header, icon_resource_data.header_size)) {
         wegapi::print_last_error(L"create_tile, UpdateResourceW header");
@@ -288,6 +329,7 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
         return;
     }
 
+    // then, add every image to it also
     for (wegapi::icons::RT_ICON_DATA image : icon_resource_data.images) {
         if (!UpdateResourceW(exe, RT_ICON, MAKEINTRESOURCEW(image.resource_number),
                              MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), image.data, image.size)) {
@@ -306,6 +348,15 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
     CloseHandle(exe);
 }
 
+/**
+ * Creates a number of tiles, all with the same specified icon. \n \n
+ *
+ * On error, prints a message and exits.
+ *
+ * @param game_dir the game directory
+ * @param icon_name the name of the icon, in the /.gamedata/resources directory
+ * @param tiles the tiles to create, as pairs (index, name)
+ */
 static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, std::vector<std::pair<int32_t, wchar_t*>>& tiles) {
     wchar_t *icon_name_wchar = validate_icon_name(icon_name);
     wchar_t *icon_path = get_icon_path(game_dir, icon_name_wchar);
@@ -318,6 +369,15 @@ static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, st
     }
 }
 
+/**
+ * Creates tiles from the data passed in to the program at the command line. \n \n
+ *
+ * On error, prints a message and exits.
+ *
+ * @param game_dir the game directory
+ * @param data the data, representing the tiles to create
+ * @param mode mode (how to handle existing tiles, etc.)
+ */
 static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& data, [[maybe_unused]] Mode mode) {
     // todo: incorporate mode and create non-existent tiles
     for (auto& [icon_name, tiles] : data) {
@@ -326,7 +386,7 @@ static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std
 }
 
 /**
- * Main function. Creates tiles based on command-line arguments (TODO: not yet implemented, only arg parsing for now).
+ * Main function. Creates tiles based on command-line arguments.
  *
  * @param argc number of arguments
  * @param argv[1] the directory to create the tiles in
