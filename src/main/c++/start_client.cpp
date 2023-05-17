@@ -40,7 +40,7 @@ static wchar_t *get_wegapi_jar() {
     }
 
     // Check it actually exists
-    if (!wegapi::util::check_exists(wegapi_path, L"Can't find wegapi.jar")) {
+    if (!wegapi::util::check_exists_perror(wegapi_path, L"Can't find wegapi.jar")) {
         exit(EXIT_FAILURE); // todo: instead search for default install
     }
 

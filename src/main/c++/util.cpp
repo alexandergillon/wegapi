@@ -170,7 +170,8 @@ namespace wegapi {
 
         /**
          * Prints a string representation of the last error, as given by the Windows API GetLastError() function, with
-         * an additional error message in front (given by the argument).
+         * an additional error message in front (given by the argument). Also pauses execution to wait for the user
+         * to read the error.
          *
          * @param error_message the additional error message to put in front of the message for GetLastError()
          */
@@ -183,6 +184,17 @@ namespace wegapi {
         }
 
         /**
+         * Returns whether a path exists. A file may not 'exist' for reasons such as invalid permissions, etc.,
+         * in which case this function returns false.
+         *
+         * @param path the path to check
+         * @return whether the path exists as a file
+         */
+        bool path_exists(wchar_t *path) {
+            return GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+        }
+
+        /**
           * Check whether a path exists. If it doesn't, prints an error message. A file may not 'exist' for reasons such
           * as invalid permissions, etc., in which case this function still prints an error and returns false.
           *
@@ -190,11 +202,12 @@ namespace wegapi {
           * @param error_message_user error message to print, if the file doens't exist
           * @return whether the file exists
           */
-        bool check_exists(wchar_t *path, const wchar_t *error_message_user) {
-            if (GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) {
+        bool check_exists_perror(wchar_t *path, const wchar_t *error_message_user) {
+            bool exists = path_exists(path);
+            if (!exists) {
                 std::wstring error_message_user_w(error_message_user);
                 std::wcout << error_message_user_w << ":\n\t";
-                print_last_error(L"check_exists");
+                print_last_error(L"check_exists_perror");
                 return false;
             }
             return true;

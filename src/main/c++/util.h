@@ -22,7 +22,8 @@ namespace wegapi {
         void wait_for_user();
         void print_last_error(const wchar_t *message);
         // todo: maybe change to wstring
-        bool check_exists(wchar_t *path, const wchar_t *error_message);
+        bool path_exists(wchar_t *path);
+        bool check_exists_perror(wchar_t *path, const wchar_t *error_message);
         bool check_success(HRESULT hr, const wchar_t *error_message);
     }
 }

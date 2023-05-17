@@ -14,7 +14,7 @@ else()
     endif()
 endif()
 
-add_executable(aaaaa
+add_executable(tile
         tile.cpp
         util.cpp)
 

@@ -31,7 +31,7 @@ namespace {
         WEGAPI_OVERWRITE_EXISTING
     };
     const DWORD ICONDIR_RESOURCE_NUMBER = 1;
-    wchar_t *game_dir_global = NULL; // for atexit() handler
+    wchar_t *game_dir_global = NULL; // for notify_explorer(), which is an atexit() handler
 }
 
 /**
@@ -49,6 +49,7 @@ namespace {
             L"Options:\n"
             L"  -n        create only if tile doesn't already exist - throws an error if tile exists\n"
             L"  -o        create only if tile already exists (i.e., overwrite) - throws an error if tile doesn't exist\n"
+            L"Default behavior (when no option is supplied) is to overwrite existing tiles, or create them if they do not exist.\n"
             L"\n"
             L"A tile is one of the following:\n"
             L"  - A comma-delimited pair of an index (describing the index of the tile to be created), and a file "
@@ -307,16 +308,92 @@ static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]]
 }
 
 /**
+ * Get the base tile path, which is the tile that is copied to create new tiles. \n \n
+ *
+ * On error, prints an error message and exits.
+ *
+ * @param game_dir the game directory
+ * @return the path of the base tile
+ */
+static wchar_t *get_base_tile_path(wchar_t *game_dir) {
+    wchar_t *base_tile_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
+    wcscpy_s(base_tile_path, 1+_MAX_PATH, game_dir);
+
+    HRESULT hr = PathCchAppend(base_tile_path, 1+_MAX_PATH, L"\\.gamedata\\tile.exe");
+    if (!wegapi::util::check_success(hr, L"PathCchAppend")) {
+        exit(EXIT_FAILURE);
+    }
+
+    return base_tile_path;
+}
+
+/**
+ * Copies a tile from one location to another. On failure, prints an error message and exits.
+ *
+ * @param from path of the file to be copied
+ * @param to path of the new copy to be made
+ */
+static void copy_exit_on_failure(wchar_t *from, wchar_t *to) {
+    if (!CopyFileW(from, to, FALSE)) {
+        wegapi::util::print_last_error((L"CopyFileW, " + std::wstring(from) + L" --> " + std::wstring(to)).c_str());
+        exit(EXIT_FAILURE);
+    }
+}
+
+/**
+ * Enforces that a tile creation agrees with the specified mode, potentially creating a new tile file if needed. \n \n
+ *
+ * If mode is CREATE, then creates a tile if it doesn't exist. \n
+ * If mode is CREATE_NEW, then creates a tile if it doesn't exist. If it does, prints an error message and exits. \n
+ * If mode is OVERWRITE_EXISTING, then checks that the tile exists. If not, prints an error message and exits.
+ *
+ * @param tile_path path to check/create
+ * @param mode mode (how to handle existing tiles, etc.)
+ * @param base_tile_path path to the base tile, to be used if creating new tiles
+ */
+static void enforce_mode(wchar_t *tile_path, Mode mode, wchar_t *base_tile_path) {
+    switch (mode) {
+        case WEGAPI_CREATE:
+            if (wegapi::util::path_exists(tile_path)) {
+                return;
+            } else {
+                copy_exit_on_failure(base_tile_path, tile_path);
+                return;
+            }
+        case WEGAPI_CREATE_NEW:
+            if (wegapi::util::path_exists(tile_path)) {
+                std::wcout << L"Error: CREATE_NEW was specified, but " << std::wstring(tile_path) << L" already exists." << std::endl;
+                wegapi::util::wait_for_user();
+                exit(EXIT_FAILURE);
+            } else {
+                copy_exit_on_failure(base_tile_path, tile_path);
+                return;
+            }
+        case WEGAPI_OVERWRITE_EXISTING:
+            if (!wegapi::util::path_exists(tile_path)) {
+                std::wcout << L"Error: OVERWRITE_EXISTING was specified, but " << std::wstring(tile_path) << L" doesn't exist." << std::endl;
+                wegapi::util::wait_for_user();
+                exit(EXIT_FAILURE);
+            } else {
+                return;
+            }
+    }
+}
+
+/**
  * Creates a tile with a specified index, icon and name.
  *
  * @param game_dir the game directory
  * @param index index of the tile to create
  * @param name name of the tile to create
  * @param icon_resource_data data describing the icon of the tile, as parsed by wegapi::icons::ico_to_icon_resource
+ * @param mode mode (how to handle existing tiles, etc.)
+ * @param base_tile_path path to the base tile, to be used if creating new tiles
  */
-static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data) {
-    // todo: create tile with name if it doesn't exist
+static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data, Mode mode, wchar_t *base_tile_path) {
     wchar_t *tile_path = get_tile_path(game_dir, index, name);
+
+    enforce_mode(tile_path, mode, base_tile_path);
 
     HANDLE exe = BeginUpdateResourceW(tile_path, FALSE);
     if (exe == NULL) {
@@ -359,16 +436,17 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
  * @param game_dir the game directory
  * @param icon_name the name of the icon, in the /.gamedata/resources directory
  * @param tiles the tiles to create, as pairs (index, name)
+ * @param mode mode (how to handle existing tiles, etc.)
+ * @param base_tile_path path to the base tile, to be used if creating new tiles
  */
-static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, std::vector<std::pair<int32_t, wchar_t*>>& tiles) {
+static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, std::vector<std::pair<int32_t, wchar_t*>>& tiles, Mode mode, wchar_t *base_tile_path) {
     wchar_t *icon_name_wchar = validate_icon_name(icon_name);
     wchar_t *icon_path = get_icon_path(game_dir, icon_name_wchar);
 
     wegapi::icons::RT_GROUP_ICON_DATA icon_resource_data = wegapi::icons::ico_to_icon_resource(icon_path);
 
     for (auto& [index, name] : tiles) {
-        // todo: create tile with name if it doesn't exist
-        create_tile(game_dir, index, name, icon_resource_data);
+        create_tile(game_dir, index, name, icon_resource_data, mode, base_tile_path);
     }
 }
 
@@ -381,10 +459,19 @@ static void create_tiles_with_icon(wchar_t *game_dir, std::wstring icon_name, st
  * @param data the data, representing the tiles to create
  * @param mode mode (how to handle existing tiles, etc.)
  */
-static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& data, [[maybe_unused]] Mode mode) {
-    // todo: incorporate mode and create non-existent tiles
+static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& data, Mode mode) {
+    wchar_t *base_tile_path = NULL;
+    switch (mode) {
+        case WEGAPI_CREATE:
+        case WEGAPI_CREATE_NEW:
+            base_tile_path = get_base_tile_path(game_dir);
+            break;
+        case WEGAPI_OVERWRITE_EXISTING:
+            break;
+    }
+
     for (auto& [icon_name, tiles] : data) {
-        create_tiles_with_icon(game_dir, icon_name, tiles);
+        create_tiles_with_icon(game_dir, icon_name, tiles, mode, base_tile_path);
     }
 }
 
@@ -418,7 +505,7 @@ int wmain(int argc, wchar_t* argv[]) {
         option = argv[3];
     }
 
-    if (!wegapi::util::check_exists(game_dir, L"create_tiles: game directory doesn't exist")) {
+    if (!wegapi::util::check_exists_perror(game_dir, L"create_tiles: game directory doesn't exist")) {
         exit(EXIT_FAILURE);
     }
 
@@ -426,7 +513,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
     Mode mode = parse_option(option);
 
-    print_args(game_dir, parsed_data, mode);
+    //print_args(game_dir, parsed_data, mode);
 
     // installs exit handler to refresh Windows Explorer on exit, so that even on abnormal exit updates are shown to the player
     size_t game_dir_len = 1+wcslen(game_dir);
