@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <pathcch.h>
 #include <shlwapi.h>
+#include <shlobj.h>
+#include <stdlib.h>
 
 #include "constants.h"
 #include "util.h"
@@ -29,6 +31,7 @@ namespace {
         WEGAPI_OVERWRITE_EXISTING
     };
     const DWORD ICONDIR_RESOURCE_NUMBER = 1;
+    wchar_t *game_dir_global = NULL; // for atexit() handler
 }
 
 /**
@@ -386,6 +389,16 @@ static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std
 }
 
 /**
+ * Tells Windows Explorer that the game directory changed, which prompts it to invalidate the icon cache for tiles
+ * that changed, and redraw any new icons. I.e. refreshes Windows Explorer for the player. This function is registered
+ * to run at exit with atexit(), so that if the program terminates at any point any already completed changes are
+ * shown. E.g. if the third tile causes an exit, the first two tiles which have already been changed are shown to the user.
+ */
+static void notify_explorer() {
+    SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH, game_dir_global, NULL);
+}
+
+/**
  * Main function. Creates tiles based on command-line arguments.
  *
  * @param argc number of arguments
@@ -414,6 +427,14 @@ int wmain(int argc, wchar_t* argv[]) {
     Mode mode = parse_option(option);
 
     print_args(game_dir, parsed_data, mode);
+
+    // installs exit handler to refresh Windows Explorer on exit, so that even on abnormal exit updates are shown to the player
+    size_t game_dir_len = 1+wcslen(game_dir);
+    game_dir_global = (wchar_t*)malloc(sizeof(wchar_t) * game_dir_len);
+    wcscpy_s(game_dir_global, game_dir_len, game_dir);
+    atexit(notify_explorer);
+
     create_tiles(game_dir, parsed_data, mode);
+
     exit(EXIT_SUCCESS);
 }
