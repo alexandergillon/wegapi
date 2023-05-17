@@ -8,7 +8,7 @@
 #include <comdef.h>
 
 #include "constants.h"
-#include "helpers.h"
+#include "util.h"
 
 /**
  * Gets the path of the "wegapi.jar" file, which contains all WEGAPI Java code. This file is assumed to be in the
@@ -30,7 +30,7 @@ static wchar_t *get_wegapi_jar() {
     wchar_t *dir_without_drive = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_DIR));
     if (_wsplitpath_s(wpgmptr, drive, 1+_MAX_DRIVE, dir_without_drive, 1+_MAX_DIR, NULL, 0, NULL, 0) != 0) {
         _wperror(L"Splitting my dir failed");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE); // todo: instead search for default install
     }
 
@@ -38,12 +38,12 @@ static wchar_t *get_wegapi_jar() {
     wchar_t *wegapi_path = (wchar_t*)malloc(sizeof(wchar_t) * (1+_MAX_PATH));
     if (_wmakepath_s(wegapi_path, 1+_MAX_PATH, drive, dir_without_drive, wegapi_filename, wegapi_fileext)) { // todo: try with larger buffers?
         _wperror(L"Making path failed");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE); // todo: instead search for default install
     }
 
     // Check it actually exists
-    if (!wegapi::check_exists(wegapi_path, L"Can't find wegapi.jar")) {
+    if (!wegapi::util::check_exists(wegapi_path, L"Can't find wegapi.jar")) {
         exit(EXIT_FAILURE); // todo: instead search for default install
     }
 
@@ -73,35 +73,35 @@ static wchar_t *get_folder_from_user() {
     wchar_t *filePath = NULL;
     HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
-    if (!wegapi::check_success(hr, L"CoInitializeEx")) goto nocleanup;
+    if (!wegapi::util::check_success(hr, L"CoInitializeEx")) goto nocleanup;
 
     IFileOpenDialog *fileOpenDialog;
     hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
                           IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
 
-    if (!wegapi::check_success(hr, L"CoCreateInstance")) goto cleanup_uninitialize;
+    if (!wegapi::util::check_success(hr, L"CoCreateInstance")) goto cleanup_uninitialize;
 
     DWORD flags;
     hr = fileOpenDialog->GetOptions(&flags);
 
-    if (!wegapi::check_success(hr, L"fileOpenDialog->GetOptions")) goto cleanup_releaseFileDialog;
+    if (!wegapi::util::check_success(hr, L"fileOpenDialog->GetOptions")) goto cleanup_releaseFileDialog;
 
     // only allow user to pick folders
     hr = fileOpenDialog->SetOptions(flags | FOS_PICKFOLDERS | FOS_NOCHANGEDIR | FOS_FORCEFILESYSTEM | FOS_OKBUTTONNEEDSINTERACTION);
 
-    if (!wegapi::check_success(hr, L"fileOpenDialog->SetOptions")) goto cleanup_releaseFileDialog;
+    if (!wegapi::util::check_success(hr, L"fileOpenDialog->SetOptions")) goto cleanup_releaseFileDialog;
 
     hr = fileOpenDialog->Show(NULL); // show user the dialog
 
-    if (!wegapi::check_success(hr, L"fileOpenDialog->Show")) goto cleanup_releaseFileDialog; // todo: handle cancelled selection
+    if (!wegapi::util::check_success(hr, L"fileOpenDialog->Show")) goto cleanup_releaseFileDialog; // todo: handle cancelled selection
 
     IShellItem *shellItem;
     hr = fileOpenDialog->GetResult(&shellItem);
 
-    if (!wegapi::check_success(hr, L"fileOpenDialog->GetResult")) goto cleanup_releaseFileDialog;
+    if (!wegapi::util::check_success(hr, L"fileOpenDialog->GetResult")) goto cleanup_releaseFileDialog;
 
     hr = shellItem->GetDisplayName(SIGDN_FILESYSPATH, &filePath); // get the path of the folder they chose
-    if (!wegapi::check_success(hr, L"shellItem->GetDisplayName")) {
+    if (!wegapi::util::check_success(hr, L"shellItem->GetDisplayName")) {
         filePath = NULL;
     }
 
@@ -139,7 +139,7 @@ static void launch_java(wchar_t *java_path, wchar_t *jar_path, wchar_t *dir) {
 
     if (swprintf(cmdline, 1+cmdline_size, wegapi::java::JAVA_CMDLINE_START_CLIENT, jar_path, dir) == -1) {
         _wperror(L"swprintf failed for launch client command-line parameters");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
 

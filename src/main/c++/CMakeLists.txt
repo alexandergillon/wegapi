@@ -16,15 +16,15 @@ endif()
 
 add_executable(aaaaa
         tile.cpp
-        helpers.cpp)
+        util.cpp)
 
 add_executable(start_client
         start_client.cpp
-        helpers.cpp)
+        util.cpp)
 
 add_executable(create_tiles
         create_tiles.cpp
-        helpers.cpp
+        util.cpp
         ico_parser.cpp)
 
 target_link_libraries(create_tiles

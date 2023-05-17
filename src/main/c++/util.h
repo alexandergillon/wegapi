@@ -14,10 +14,12 @@ namespace wegapi {
         wchar_t *index_to_filename_with_exe(int32_t index);
     }
 
-    // todo: message box errors
-    void wait_for_user();
-    void print_last_error(const wchar_t *message);
-    // todo: maybe change to wstring
-    bool check_exists(wchar_t *path, const wchar_t *error_message);
-    bool check_success(HRESULT hr, const wchar_t *error_message);
+    namespace util {
+        // todo: message box errors
+        void wait_for_user();
+        void print_last_error(const wchar_t *message);
+        // todo: maybe change to wstring
+        bool check_exists(wchar_t *path, const wchar_t *error_message);
+        bool check_success(HRESULT hr, const wchar_t *error_message);
+    }
 }

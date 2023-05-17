@@ -5,7 +5,7 @@
 #include <fcntl.h>
 
 #include "constants.h"
-#include "helpers.h"
+#include "util.h"
 
 // mallocs are not cleaned up as we will exit soon
 // todo: check more errors
@@ -30,7 +30,7 @@ static wchar_t *get_my_filename() {
     wchar_t *my_filename = (wchar_t*)malloc(sizeof(wchar_t) * (1+wegapi::filenames::FILENAME_LENGTH));
     if (_wsplitpath_s(wpgmptr, NULL, 0, NULL, 0, my_filename, 1+wegapi::filenames::FILENAME_LENGTH, NULL, 0) != 0) {
         _wperror(L"Splitting my_filename failed");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
     return my_filename;
@@ -52,7 +52,7 @@ static wchar_t *get_other_filename(wchar_t *path) {
     wchar_t *other_filename = (wchar_t*)malloc(sizeof(wchar_t) * (1+wegapi::filenames::FILENAME_LENGTH));
     if (_wsplitpath_s(path, NULL, 0, NULL, 0, other_filename, 1+wegapi::filenames::FILENAME_LENGTH, NULL, 0) != 0) {
         _wperror(L"Splitting other_filename failed");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
     return other_filename;
@@ -73,7 +73,7 @@ static void launch_java_dragged(wchar_t *java_path, int from_index, int to_index
 
     if (swprintf(cmdline, 1+cmdline_size, wegapi::java::JAVA_CMDLINE_DRAGGED, from_index, to_index) == -1) {
         _wperror(L"swprintf failed for dragged command-line parameters");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
 
@@ -92,7 +92,7 @@ static void launch_java_clicked(wchar_t *java_path, int clicked_index) {
 
     if (swprintf(cmdline, 1+cmdline_size, wegapi::java::JAVA_CMDLINE_CLICKED, clicked_index) == -1) {
         _wperror(L"swprintf failed for dragged command-line parameters");
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
 

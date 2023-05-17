@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "ico_parser.h"
-#include "helpers.h"
+#include "util.h"
 
 /**
  * Structure of an ICONDIRENTRY on disk, in a .ico file. An ICONDIRENTRY stores metadata about one of the images in
@@ -164,7 +164,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // open file for read access
     icon_ref = CreateFileW(icon_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (icon_ref == INVALID_HANDLE_VALUE) {
-        wegapi::print_last_error((std::wstring(L"memory_map_icon, could not open file ") + std::wstring(icon_path)).c_str());
+        wegapi::util::print_last_error((std::wstring(L"memory_map_icon, could not open file ") + std::wstring(icon_path)).c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -175,13 +175,13 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     if ((file_size_high | file_size_low) == 0) {
         // file is empty
         std::wcout << L"Error: icon_ref " << std::wstring(icon_path) << L" is empty." << std::endl;
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         CloseHandle(icon_ref);
         exit(EXIT_FAILURE);
     } else if (file_size_high != 0) {
         // file is too large (> 2^32 bytes)
         std::wcout << L"Error: icon_ref " << std::wstring(icon_path) << L" is too large." << std::endl;
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         CloseHandle(icon_ref);
         exit(EXIT_FAILURE);
     }
@@ -190,7 +190,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // map the file
     icon_file_mapped_ref = CreateFileMappingW(icon_ref, NULL, PAGE_READONLY, 0, 0, NULL);
     if (icon_file_mapped_ref == NULL) {
-        wegapi::print_last_error(L"memory_map_icon, CreateFileMappingW");
+        wegapi::util::print_last_error(L"memory_map_icon, CreateFileMappingW");
         CloseHandle(icon_ref);
         exit(EXIT_FAILURE);
     }
@@ -198,7 +198,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // get a buffer with the file in it
     void *icon_memory_mapping = MapViewOfFile(icon_file_mapped_ref, FILE_MAP_READ, 0, 0, 0);
     if (icon_memory_mapping == NULL) {
-        wegapi::print_last_error(L"memory_map_icon, MapViewOfFile");
+        wegapi::util::print_last_error(L"memory_map_icon, MapViewOfFile");
         CloseHandle(icon_ref);
         CloseHandle(icon_file_mapped_ref);
         exit(EXIT_FAILURE);
@@ -318,7 +318,7 @@ wegapi::icons::RT_GROUP_ICON_DATA wegapi::icons::ico_to_icon_resource(wchar_t* i
         result = parse_and_convert(icon_memory_mapping, icon_path);
     } catch (ParseException e) {
         std::wcout << e.what_wstring() << std::endl;
-        wegapi::wait_for_user();
+        wegapi::util::wait_for_user();
         failed = true;
     }
 

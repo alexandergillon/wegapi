@@ -7,7 +7,7 @@
 #include <shlwapi.h>
 
 #include "constants.h"
-#include "helpers.h"
+#include "util.h"
 #include "ico_parser.h"
 
 // create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
@@ -241,7 +241,7 @@ static wchar_t *validate_icon_name(std::wstring icon_name) {
 
     HRESULT hr = PathCchRemoveExtension(icon_name_wchar, icon_name_wchar_size);
     if (!(hr == S_OK || hr == S_FALSE)) {
-        wegapi::check_success(hr, L"PathCchRemoveExtension");
+        wegapi::util::check_success(hr, L"PathCchRemoveExtension");
         exit(EXIT_FAILURE);
     }
 
@@ -262,12 +262,12 @@ static wchar_t *get_icon_path(wchar_t *game_dir, wchar_t *icon_name) {
     wcscpy_s(icon_path, 1+_MAX_PATH, game_dir);
 
     HRESULT hr = PathCchAppend(icon_path, 1+_MAX_PATH, L"\\.gamedata\\resources\\");
-    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+    if (!wegapi::util::check_success(hr, L"PathCchAppend")) {
         exit(EXIT_FAILURE);
     }
 
     hr = PathCchAppend(icon_path, 1+_MAX_PATH, icon_name);
-    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+    if (!wegapi::util::check_success(hr, L"PathCchAppend")) {
         exit(EXIT_FAILURE);
     }
 
@@ -296,7 +296,7 @@ static wchar_t *get_tile_path(wchar_t *game_dir, int32_t index, [[maybe_unused]]
     wchar_t *tile_name = wegapi::filenames::index_to_filename_with_exe(index);
     HRESULT hr = PathCchAppend(tile_path, 1+_MAX_PATH, tile_name);
 
-    if (!wegapi::check_success(hr, L"PathCchAppend")) {
+    if (!wegapi::util::check_success(hr, L"PathCchAppend")) {
         exit(EXIT_FAILURE);
     }
 
@@ -317,14 +317,14 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
 
     HANDLE exe = BeginUpdateResourceW(tile_path, FALSE);
     if (exe == NULL) {
-        wegapi::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
+        wegapi::util::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
         return;
     }
 
     // update the icon directory in the executable
     if (!UpdateResourceW(exe, RT_GROUP_ICON, MAKEINTRESOURCEW(ICONDIR_RESOURCE_NUMBER),
                          MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_resource_data.header, icon_resource_data.header_size)) {
-        wegapi::print_last_error(L"create_tile, UpdateResourceW header");
+        wegapi::util::print_last_error(L"create_tile, UpdateResourceW header");
         CloseHandle(exe);
         return;
     }
@@ -333,14 +333,14 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
     for (wegapi::icons::RT_ICON_DATA image : icon_resource_data.images) {
         if (!UpdateResourceW(exe, RT_ICON, MAKEINTRESOURCEW(image.resource_number),
                              MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), image.data, image.size)) {
-            wegapi::print_last_error(L"create_tile, UpdateResourceW image");
+            wegapi::util::print_last_error(L"create_tile, UpdateResourceW image");
             CloseHandle(exe);
             return;
         }
     }
 
     if (!EndUpdateResource(exe, FALSE)) {
-        wegapi::print_last_error(L"create_tile, EndUpdateResource");
+        wegapi::util::print_last_error(L"create_tile, EndUpdateResource");
         CloseHandle(exe);
         return;
     }
@@ -405,7 +405,7 @@ int wmain(int argc, wchar_t* argv[]) {
         option = argv[3];
     }
 
-    if (!wegapi::check_exists(game_dir, L"create_tiles: game directory doesn't exist")) {
+    if (!wegapi::util::check_exists(game_dir, L"create_tiles: game directory doesn't exist")) {
         exit(EXIT_FAILURE);
     }
 

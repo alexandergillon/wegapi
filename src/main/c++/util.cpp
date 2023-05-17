@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <io.h>
 
-#include "helpers.h"
+#include "util.h"
 #include "constants.h"
 
 namespace wegapi {
@@ -42,7 +42,7 @@ namespace wegapi {
 
             if (!CreateProcessW(java_path, cmdline, NULL, NULL, false,  creationFlags, NULL, NULL, startupInfo, processInfo)) {
                 _wperror(L"Launching Java failed");
-                wegapi::wait_for_user();
+                wegapi::util::wait_for_user();
                 exit(EXIT_FAILURE);
             }
 
@@ -130,67 +130,69 @@ namespace wegapi {
         }
     }
 
-    /**
-    * Waits for user input, so that they can read any error output. Intended for debugging/development.
-    */
-    void wait_for_user() {
-        std::wcout << L"An error has occurred, and execution has been halted so that you can read the output. Enter anything to continue." << std::endl;
-        int i;
-        std::wcin >> i;
-    }
-
-    void print_last_error(const wchar_t *error_message) {
-        DWORD error = GetLastError();
-        std::string error_message_sys = std::system_category().message(error);
-        std::wstring error_message_sys_w(error_message_sys.begin(), error_message_sys.end());
-        std::wcout << std::wstring(error_message) << L": " << error_message_sys_w << std::endl;
-        wait_for_user();
-    }
-
-    /**
-     * Check whether a path exists. If it doesn't, prints an error message. A file may not 'exist' for reasons such
-     * as invalid permissions, etc., in which case this function still prints an error and returns false.
-     *
-     * @param path path to check whether exists
-     * @param error_message_user error message to print, if the file doens't exist
-     * @return whether the file exists
-     */
-    bool check_exists(wchar_t *path, const wchar_t *error_message_user) {
-        if (GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) {
-            std::wstring error_message_user_w(error_message_user);
-            std::wcout << error_message_user_w << ":\n\t";
-            print_last_error(L"check_exists");
-            return false;
-        }
-        return true;
-    }
-
-    /**
-    * Checks whether a Win32 API call succeeded, based on its return value. If it failed, prints an error message,
-    * and pauses execution so that the user can read the error message. \n \n
-    *
-    * @param hr the return value of a Win32 API call
-    * @param error_message a message to print, on error, along with a default error message
-    * @return whether that call succeeded
-    */
-    bool check_success(HRESULT hr, const wchar_t *error_message) {
-        // todo:rename params
-        bool success = SUCCEEDED(hr);
-
-        if (!success) {
-            _com_error error(hr);
-            LPCWSTR errorMessage = error.ErrorMessage();
-
-            _setmode(_fileno(stdout), _O_U16TEXT);
-            std::wcout << L"error (";
-            wprintf(error_message); // this naming is awful, will change
-            std::wcout << L"):";
-            wprintf(errorMessage);
-            std::wcout << std::endl;
-
-            wegapi::wait_for_user();
+    namespace util {
+        /**
+        * Waits for user input, so that they can read any error output. Intended for debugging/development.
+        */
+        void wait_for_user() {
+            std::wcout << L"An error has occurred, and execution has been halted so that you can read the output. Enter anything to continue." << std::endl;
+            int i;
+            std::wcin >> i;
         }
 
-        return success;
+        void print_last_error(const wchar_t *error_message) {
+            DWORD error = GetLastError();
+            std::string error_message_sys = std::system_category().message(error);
+            std::wstring error_message_sys_w(error_message_sys.begin(), error_message_sys.end());
+            std::wcout << std::wstring(error_message) << L": " << error_message_sys_w << std::endl;
+            wait_for_user();
+        }
+
+        /**
+         * Check whether a path exists. If it doesn't, prints an error message. A file may not 'exist' for reasons such
+         * as invalid permissions, etc., in which case this function still prints an error and returns false.
+         *
+         * @param path path to check whether exists
+         * @param error_message_user error message to print, if the file doens't exist
+         * @return whether the file exists
+         */
+        bool check_exists(wchar_t *path, const wchar_t *error_message_user) {
+            if (GetFileAttributesW(path) == INVALID_FILE_ATTRIBUTES) {
+                std::wstring error_message_user_w(error_message_user);
+                std::wcout << error_message_user_w << ":\n\t";
+                print_last_error(L"check_exists");
+                return false;
+            }
+            return true;
+        }
+
+        /**
+        * Checks whether a Win32 API call succeeded, based on its return value. If it failed, prints an error message,
+        * and pauses execution so that the user can read the error message. \n \n
+        *
+        * @param hr the return value of a Win32 API call
+        * @param error_message a message to print, on error, along with a default error message
+        * @return whether that call succeeded
+        */
+        bool check_success(HRESULT hr, const wchar_t *error_message) {
+            // todo:rename params
+            bool success = SUCCEEDED(hr);
+
+            if (!success) {
+                _com_error error(hr);
+                LPCWSTR errorMessage = error.ErrorMessage();
+
+                _setmode(_fileno(stdout), _O_U16TEXT);
+                std::wcout << L"error (";
+                wprintf(error_message); // this naming is awful, will change
+                std::wcout << L"):";
+                wprintf(errorMessage);
+                std::wcout << std::endl;
+
+                wait_for_user();
+            }
+
+            return success;
+        }
     }
 }
