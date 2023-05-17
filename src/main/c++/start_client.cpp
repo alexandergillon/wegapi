@@ -1,11 +1,8 @@
 #include <Windows.h>
 #include <string>
-#include <iostream>
 #include <regex>
-#include <io.h>
 #include <fcntl.h>
 #include <ShObjIdl.h>
-#include <comdef.h>
 
 #include "constants.h"
 #include "util.h"

@@ -1,7 +1,5 @@
 #include <Windows.h>
 #include <string>
-#include <iostream>
-#include <io.h>
 #include <fcntl.h>
 
 #include "constants.h"

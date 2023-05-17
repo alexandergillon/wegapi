@@ -2,6 +2,9 @@
 
 #include <Windows.h>
 
+/**
+ * Comments in implementation (util.cpp), as this is developer-facing code.
+ */
 namespace wegapi {
     namespace java {
         wchar_t *get_java_path();
