@@ -3,10 +3,11 @@ package com.github.alexandergillon.wegapi.client;
 import com.github.alexandergillon.wegapi.game.DaemonInterface;
 import com.github.alexandergillon.wegapi.game.GameInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
-import com.github.alexandergillon.wegapi.server.Server;
 import org.apache.commons.cli.*;
 
+import java.io.*;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.rmi.Naming;
@@ -14,12 +15,25 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 // todo: if lock is held, abort action
 
-public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface {
+public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface, PlayerInterface {
+    private final String gameDataDirName = ".gamedata";
+    private final String playerDataFilename = "playerdata.wegapi";
+    private final String playerDataMagic = "WEGAPIPLAYERDATA";
+
+    // 0.1.0
+    private final int majorVersionNumber = 0;
+    private final int minorVersionNumber = 1;
+    private final int patchVersionNumber = 0;
+
     private final Path gameDir;
+    private int playerNumber = -1;
+    private boolean gameOver = false; // todo: use
+
     private final ReentrantLock actionLock = new ReentrantLock(true);
     private final GameInterface server;
 
@@ -64,7 +78,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileClicked(int tile) {
         System.out.printf("daemon: tile clicked: %d%n", tile);
         try {
-            server.tileClicked(tile, 0);
+            server.tileClicked(tile, new GameInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e.toString());
         }
@@ -83,9 +97,148 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileDragged(int fromTile, int toTile) {
         System.out.printf("daemon: tile dragged: from %d to %d%n", fromTile, toTile);
         try {
-            server.tileDragged(fromTile, toTile, 0);
+            server.tileDragged(fromTile, toTile, new GameInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e.toString());
+        }
+    }
+
+    /**
+     * Checks whether a path exists, and optionally whether it is a directory. If either check fails, prints an
+     * error message and aborts.
+     *
+     * @param path path to check whether it exists
+     * @param checkIsDir whether to check if the path is also a directory
+     */
+    private void checkExists(Path path, boolean checkIsDir) {
+        File file = new File(path.toString());
+        if (!file.exists()) {
+            System.out.println(path + " does not exist, aborting.");
+            System.exit(1);
+        }
+
+        if (checkIsDir && !file.isDirectory()) {
+            System.out.println(path + " is not a directory, aborting.");
+            System.exit(1);
+        }
+    }
+
+    @Override
+    public void initialize(int playerNumber) {
+        System.out.println("daemon: initializing, got player #" + playerNumber);
+        this.playerNumber = playerNumber;
+
+        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        checkExists(gameDataDirPath, true);
+        Path playerDataPath = gameDataDirPath.resolve(playerDataFilename);
+        File playerData = new File(playerDataPath.toString());
+
+        try (FileOutputStream playerDataStream = new FileOutputStream(playerData)) {
+            byte[] magic = playerDataMagic.getBytes(StandardCharsets.US_ASCII);
+            playerDataStream.write(magic);
+
+            DataOutputStream dataOutputStream = new DataOutputStream(playerDataStream);
+            dataOutputStream.writeInt(majorVersionNumber);
+            dataOutputStream.writeInt(minorVersionNumber);
+            dataOutputStream.writeInt(patchVersionNumber);
+
+            dataOutputStream.writeInt(playerNumber);
+        } catch (FileNotFoundException e) {
+            System.out.printf("playerdata file could not be created, %s%n", e.toString());
+            System.exit(1);
+        } catch (IOException e) {
+            System.out.printf("IOException while writing/closing playerdata, %s%n", e.toString());
+            System.exit(1);
+        }
+    }
+
+    private Process launchCreateTiles(Path gameDataDirPath, String tileData, CreateTilesMode mode) {
+        Path createTilesExePath = gameDataDirPath.resolve("create_tiles.exe");
+
+        try {
+            switch (mode) {
+                case CREATE:
+                    return new ProcessBuilder(createTilesExePath.toString(), gameDir.toString(), tileData)
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+                case CREATE_NEW:
+                    return new ProcessBuilder(createTilesExePath.toString(), gameDir.toString(), tileData, "-n")
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+                case OVERWRITE_EXISTING:
+                    return new ProcessBuilder(createTilesExePath.toString(), gameDir.toString(), tileData, "-o")
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+            }
+        } catch (IOException e) {
+            System.out.printf("failed to create create_tiles process, %s%n", e.toString());
+            System.exit(1);
+        }
+
+        return null; // for the compiler
+    }
+
+    @Override
+    public void displayMessage(String message, boolean error) {
+        if (error) {
+            System.out.println("daemon: received ERROR message from server: " + message);
+        } else {
+            System.out.println("daemon: received message from server: " + message);
+        }
+    }
+
+    @Override
+    public void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) {
+        System.out.println("daemon: creating tiles...");
+        // todo: use installed binaries in program files
+        // todo: concurrency
+        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        checkExists(gameDataDirPath, true);
+
+        ArrayList<String> stringifiedTiles = new ArrayList<>();
+        for (GameInterface.Tile tile : tiles) {
+            String stringifiedTile;
+            if (tile.getTileName() == null) {
+                stringifiedTile = String.join(":", Integer.toString(tile.getIndex()), tile.getIconName());
+            } else {
+                stringifiedTile = String.join(":", Integer.toString(tile.getIndex()), tile.getIconName(), tile.getTileName());
+            }
+            stringifiedTiles.add(stringifiedTile);
+        }
+        String tileData = String.join(",", stringifiedTiles);
+        System.out.println("tiledata: " + tileData);
+
+        Process p = launchCreateTiles(gameDataDirPath, tileData, mode);
+
+        try {
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+                System.out.println("create_tiles.exe failed");
+                System.exit(1);
+            }
+        } catch (InterruptedException e) {
+            // this shouldn't happen
+            System.out.printf("interrupted while waiting for create_tiles process, %s%n", e.toString());
+            System.exit(1);
+        }
+    }
+
+    @Override
+    public void gameOver(boolean win) {
+        gameOver = true;
+    }
+
+    /**
+     * Registers this player with the server.
+     */
+    private void registerWithServer() {
+        try {
+            server.registerPlayer(this);
+        } catch (RemoteException e) {
+            System.out.printf("RemoteException while registering with server, %s%n", e.toString());
         }
     }
 
@@ -99,6 +252,8 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
     /**
      * Prints an error message, followed by a help message, then exits.
+     *
+     * @param errorMessage error message to print
      */
     private static void printHelpAndExit(String errorMessage) {
         System.out.println(errorMessage);
@@ -106,7 +261,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     }
 
     /**
-     * Parses command line args for the directory to run the game in, and returns its path. \n \n
+     * Parses command line args for the directory to run the game in, and returns its path. <br> <br>
      *
      * On error, prints a message and exits.
      *
@@ -159,5 +314,6 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
             System.exit(1);
         }
         System.out.println("Daemon ready!");
+        daemon.registerWithServer();
     }
 }

@@ -105,7 +105,7 @@ static std::wstring mode_to_string(Mode mode) {
  * @param parsed_data map representing parsed tile data
  * @param mode parsed mode
  */
-static void print_args(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& parsed_data, Mode mode) {
+[[maybe_unused]] static void print_args(wchar_t *game_dir, std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& parsed_data, Mode mode) {
     using namespace std;
     wcout << L"dir: " << wstring(game_dir) << L"\n";
     wcout << L"map: " << L"\n";
@@ -395,7 +395,7 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
 
     enforce_mode(tile_path, mode, base_tile_path);
 
-    HANDLE exe = BeginUpdateResourceW(tile_path, FALSE);
+    HANDLE exe = BeginUpdateResourceW(tile_path, FALSE); // does not need to be closed by CloseHandle()
     if (exe == NULL) {
         wegapi::util::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
         return;
@@ -405,7 +405,6 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
     if (!UpdateResourceW(exe, RT_GROUP_ICON, MAKEINTRESOURCEW(ICONDIR_RESOURCE_NUMBER),
                          MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_resource_data.header, icon_resource_data.header_size)) {
         wegapi::util::print_last_error(L"create_tile, UpdateResourceW header");
-        CloseHandle(exe);
         return;
     }
 
@@ -414,18 +413,14 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
         if (!UpdateResourceW(exe, RT_ICON, MAKEINTRESOURCEW(image.resource_number),
                              MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), image.data, image.size)) {
             wegapi::util::print_last_error(L"create_tile, UpdateResourceW image");
-            CloseHandle(exe);
             return;
         }
     }
 
     if (!EndUpdateResource(exe, FALSE)) {
         wegapi::util::print_last_error(L"create_tile, EndUpdateResource");
-        CloseHandle(exe);
         return;
     }
-
-    CloseHandle(exe);
 }
 
 /**

@@ -53,9 +53,9 @@ namespace wegapi {
             }
 
         #ifdef DEBUG
-            std::wcout << L"Execution has been halted to read Java output. Enter anything to continue." << std::endl;
-            int i;
-            std::wcin >> i;
+            //std::wcout << L"Execution has been halted to read Java output. Enter anything to continue." << std::endl;
+            //int i;
+            //std::wcin >> i;
         #endif
         }
     }

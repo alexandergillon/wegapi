@@ -1,39 +1,69 @@
 package com.github.alexandergillon.wegapi.game;
 
+import java.io.Serializable;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 
 public interface GameInterface extends Remote {
     String defaultIp = "127.0.0.1";
     int rmiRegistryPort = 1099;
     String defaultServerPath = "WEGAPI/GameServer";
 
-    class Tile {
+    static class Tile implements Serializable {
         private final int index;
-        private final String imageName;
+        private final String iconName;
+        private final String tileName; // may be null
 
-        public Tile(int index, String imageName) {
+        public Tile(int index, String iconName) {
             this.index = index;
-            this.imageName = imageName;
+            this.iconName = iconName;
+            this.tileName = null;
+        }
+
+        public Tile(int index, String iconName, String tileName) {
+            this.index = index;
+            this.iconName = iconName;
+            this.tileName = tileName;
         }
 
         public int getIndex() {
             return index;
         }
 
-        public String getImageName() {
-            return imageName;
+        public String getIconName() {
+            return iconName;
+        }
+
+        public String getTileName() {
+            return tileName;
+        }
+    }
+
+    static class PlayerData implements Serializable {
+        private final int playerNumber;
+        private final PlayerInterface player;
+
+        public PlayerData(int playerNumber, PlayerInterface player) {
+            this.playerNumber = playerNumber;
+            this.player = player;
+        }
+
+        public int getPlayerNumber() {
+            return playerNumber;
+        }
+
+        public PlayerInterface getPlayer() {
+            return player;
         }
     }
 
     /**
      * Informs the server that a client has joined the game for the first time.
      */
-    void clientInit() throws RemoteException;
+    void registerPlayer(PlayerInterface player) throws RemoteException;
 
     /**
      * Informs the server that a certain player double-clicked a certain tile.
@@ -41,7 +71,7 @@ public interface GameInterface extends Remote {
      * @param tile the index of the tile that the player clicked
      * @param player which player clicked the tile
      */
-    void tileClicked(int tile, int player) throws RemoteException;
+    void tileClicked(int tile, PlayerData player) throws RemoteException;
 
     /**
      * Informs the server that a certain player dragged one tile to another.
@@ -50,7 +80,7 @@ public interface GameInterface extends Remote {
      * @param toTile the index of the tile that the tile was dragged to
      * @param player the player who dragged the tile
      */
-    void tileDragged(int fromTile, int toTile, int player) throws RemoteException;
+    void tileDragged(int fromTile, int toTile, PlayerData player) throws RemoteException;
 
     static GameInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
         return connect(ip, port, defaultServerPath);
