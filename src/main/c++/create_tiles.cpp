@@ -32,6 +32,7 @@ namespace {
     };
     const DWORD ICONDIR_RESOURCE_NUMBER = 1;
     wchar_t *game_dir_global = NULL; // for notify_explorer(), which is an atexit() handler
+    std::vector<std::wstring> tiles_changed;
 }
 
 /**
@@ -355,8 +356,10 @@ static void enforce_mode(wchar_t *tile_path, Mode mode, wchar_t *base_tile_path)
     switch (mode) {
         case WEGAPI_CREATE:
             if (wegapi::util::path_exists(tile_path)) {
+                std::wcout << "using existing" << std::endl;
                 return;
             } else {
+                std::wcout << "copying" << std::endl;
                 copy_exit_on_failure(base_tile_path, tile_path);
                 return;
             }
@@ -421,6 +424,7 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
         wegapi::util::print_last_error(L"create_tile, EndUpdateResource");
         return;
     }
+    tiles_changed.push_back(std::wstring(tile_path));
 }
 
 /**
@@ -477,7 +481,19 @@ static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std
  * shown. E.g. if the third tile causes an exit, the first two tiles which have already been changed are shown to the user.
  */
 static void notify_explorer() {
-    SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH, game_dir_global, NULL);
+    // For some reason, SHChangeNotify(SHCNE_UPDATEITEM, ...) and SHChangeNotify(SHCNE_UPDATEDIR, ...) don't always
+    // refresh Explorer, but this does
+    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+
+    /*
+    for (auto& tile : tiles_changed) {
+        std::wcout << L"notify_explorer called on " << tile << std::endl;
+        SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH | SHCNF_FLUSHNOWAIT, tile.c_str(), NULL);
+    }
+    std::wcout << L"notify_explorer called on " << std::wstring(game_dir_global) << std::endl;
+    SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATH | SHCNF_FLUSH, game_dir_global, NULL);
+    std::wcout << L"done!" << std::endl;
+     */
 }
 
 /**
@@ -508,7 +524,7 @@ int wmain(int argc, wchar_t* argv[]) {
 
     Mode mode = parse_option(option);
 
-    //print_args(game_dir, parsed_data, mode);
+    print_args(game_dir, parsed_data, mode);
 
     // installs exit handler to refresh Windows Explorer on exit, so that even on abnormal exit updates are shown to the player
     size_t game_dir_len = 1+wcslen(game_dir);
