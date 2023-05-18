@@ -47,7 +47,7 @@ public class Server extends UnicastRemoteObject implements GameInterface {
         try {
             player.getPlayer().createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
         } catch (RemoteException e) {
-            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked");
+            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
         }
         cream = !cream;
     }
@@ -56,14 +56,14 @@ public class Server extends UnicastRemoteObject implements GameInterface {
     public void tileDragged(int fromTile, int toTile, PlayerData player) {
         System.out.printf("server: tile dragged: from %d to %d by player %d%n", fromTile, toTile, player.getPlayerNumber());
         Tile t1 = new Tile(fromTile, cream ? "black-king-cream" : "black-king-olive");
-        Tile t2 = new Tile(fromTile, cream ? "black-king-cream" : "black-king-olive");
+        Tile t2 = new Tile(toTile, cream ? "black-king-cream" : "black-king-olive");
         ArrayList<Tile> tiles = new ArrayList<>();
         tiles.add(t1);
         tiles.add(t2);
         try {
             player.getPlayer().createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
         } catch (RemoteException e) {
-            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked");
+            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
         }
         cream = !cream;
     }

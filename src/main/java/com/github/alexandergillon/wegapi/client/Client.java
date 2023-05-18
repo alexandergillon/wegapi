@@ -9,6 +9,8 @@ Usage:
 todo: handle multiple daemon
 
 todo: authentication / access tokens?
+
+todo: ensure tile program has finished before doing anything?
  */
 
 import java.net.MalformedURLException;
