@@ -20,7 +20,7 @@ namespace wegapi {
     namespace util {
         // todo: message box errors
         void wait_for_user();
-        void print_last_error(const wchar_t *message);
+        void print_last_error(const wchar_t *message, bool pause);
         // todo: maybe change to wstring
         bool path_exists(wchar_t *path);
         bool check_exists_perror(wchar_t *path, const wchar_t *error_message);

@@ -164,7 +164,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // open file for read access
     icon_ref = CreateFileW(icon_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (icon_ref == INVALID_HANDLE_VALUE) {
-        wegapi::util::print_last_error((std::wstring(L"memory_map_icon, could not open file ") + std::wstring(icon_path)).c_str());
+        wegapi::util::print_last_error((std::wstring(L"memory_map_icon, could not open file ") + std::wstring(icon_path)).c_str(), true);
         exit(EXIT_FAILURE);
     }
 
@@ -190,7 +190,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // map the file
     icon_file_mapped_ref = CreateFileMappingW(icon_ref, NULL, PAGE_READONLY, 0, 0, NULL);
     if (icon_file_mapped_ref == NULL) {
-        wegapi::util::print_last_error(L"memory_map_icon, CreateFileMappingW");
+        wegapi::util::print_last_error(L"memory_map_icon, CreateFileMappingW", true);
         CloseHandle(icon_ref);
         exit(EXIT_FAILURE);
     }
@@ -198,7 +198,7 @@ static void *memory_map_icon(wchar_t *icon_path, HANDLE *icon, HANDLE *icon_file
     // get a buffer with the file in it
     void *icon_memory_mapping = MapViewOfFile(icon_file_mapped_ref, FILE_MAP_READ, 0, 0, 0);
     if (icon_memory_mapping == NULL) {
-        wegapi::util::print_last_error(L"memory_map_icon, MapViewOfFile");
+        wegapi::util::print_last_error(L"memory_map_icon, MapViewOfFile", true);
         CloseHandle(icon_ref);
         CloseHandle(icon_file_mapped_ref);
         exit(EXIT_FAILURE);

@@ -3,6 +3,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 /game/
+/test/
+
+*.javaignore
 
 /src/main/c++/*.exe
 /src/main/c++/*.obj

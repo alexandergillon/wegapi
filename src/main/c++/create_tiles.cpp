@@ -15,6 +15,7 @@
 // create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
 // create_tiles.exe %cd% 0:black-king-cream && ie4uinit.exe -show
 // C:\Users\alexa\OneDrive\Misc\Projects\wegapi\src\main\c++\bin\Debug 0:black-king-cream,1:black-king-olive
+// .\.gamedata\create_tiles.exe %cd% 0:black-king-cream,1:black-king-olive
 
 // ie4uinit.exe -show
 
@@ -32,7 +33,7 @@ namespace {
     };
     const DWORD ICONDIR_RESOURCE_NUMBER = 1;
     wchar_t *game_dir_global = NULL; // for notify_explorer(), which is an atexit() handler
-    std::vector<std::wstring> tiles_changed;
+    //std::vector<std::wstring> tiles_changed;
 }
 
 /**
@@ -135,6 +136,9 @@ static std::wstring mode_to_string(Mode mode) {
  * See parse_error's help message for more information and examples. \n \n
  *
  * On error (invalid token), prints an error message and exits.
+ *
+ * @param out reference to a map, to store the parsed data in
+ * @param token the token to parse
  */
 static void parse_token(std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>>& out, wchar_t *token) {
     wchar_t *wcstok_context;
@@ -183,6 +187,8 @@ static void parse_token(std::unordered_map<std::wstring, std::vector<std::pair<i
  * and examples. \n \n
  *
  * On error (invalid input data), prints an error message and exits.
+ *
+ * @param data the data to parse, from the command line
  */
 static std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>> parse_data(wchar_t *data) {
     std::unordered_map<std::wstring, std::vector<std::pair<int32_t, wchar_t*>>> parsed_data;
@@ -336,7 +342,7 @@ static wchar_t *get_base_tile_path(wchar_t *game_dir) {
  */
 static void copy_exit_on_failure(wchar_t *from, wchar_t *to) {
     if (!CopyFileW(from, to, FALSE)) {
-        wegapi::util::print_last_error((L"CopyFileW, " + std::wstring(from) + L" --> " + std::wstring(to)).c_str());
+        wegapi::util::print_last_error((L"CopyFileW, " + std::wstring(from) + L" --> " + std::wstring(to)).c_str(), true);
         exit(EXIT_FAILURE);
     }
 }
@@ -384,7 +390,9 @@ static void enforce_mode(wchar_t *tile_path, Mode mode, wchar_t *base_tile_path)
 }
 
 /**
- * Creates a tile with a specified index, icon and name.
+ * Creates a tile with a specified index, icon and name. \n \n
+ *
+ * On error, prints an error message and returns (essentially skipping this tile).
  *
  * @param game_dir the game directory
  * @param index index of the tile to create
@@ -400,14 +408,14 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
 
     HANDLE exe = BeginUpdateResourceW(tile_path, FALSE); // does not need to be closed by CloseHandle()
     if (exe == NULL) {
-        wegapi::util::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str()); // ugly
+        wegapi::util::print_last_error((std::wstring(L"create_tile, BeginUpdateResourceW, ") + std::wstring(tile_path)).c_str(), true); // ugly
         return;
     }
 
     // update the icon directory in the executable
     if (!UpdateResourceW(exe, RT_GROUP_ICON, MAKEINTRESOURCEW(ICONDIR_RESOURCE_NUMBER),
                          MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), icon_resource_data.header, icon_resource_data.header_size)) {
-        wegapi::util::print_last_error(L"create_tile, UpdateResourceW header");
+        wegapi::util::print_last_error(L"create_tile, UpdateResourceW header", true);
         return;
     }
 
@@ -415,16 +423,16 @@ static void create_tile(wchar_t *game_dir, int index, wchar_t *name, wegapi::ico
     for (wegapi::icons::RT_ICON_DATA image : icon_resource_data.images) {
         if (!UpdateResourceW(exe, RT_ICON, MAKEINTRESOURCEW(image.resource_number),
                              MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), image.data, image.size)) {
-            wegapi::util::print_last_error(L"create_tile, UpdateResourceW image");
+            wegapi::util::print_last_error(L"create_tile, UpdateResourceW image", true);
             return;
         }
     }
 
     if (!EndUpdateResource(exe, FALSE)) {
-        wegapi::util::print_last_error(L"create_tile, EndUpdateResource");
+        wegapi::util::print_last_error(L"create_tile, EndUpdateResource", true);
         return;
     }
-    tiles_changed.push_back(std::wstring(tile_path));
+    //tiles_changed.push_back(std::wstring(tile_path));
 }
 
 /**
@@ -482,7 +490,7 @@ static void create_tiles(wchar_t *game_dir, std::unordered_map<std::wstring, std
  */
 static void notify_explorer() {
     // For some reason, SHChangeNotify(SHCNE_UPDATEITEM, ...) and SHChangeNotify(SHCNE_UPDATEDIR, ...) don't always
-    // refresh Explorer, but this does
+    // refresh Explorer icons correctly, but this does
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 
     /*

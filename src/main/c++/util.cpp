@@ -170,17 +170,20 @@ namespace wegapi {
 
         /**
          * Prints a string representation of the last error, as given by the Windows API GetLastError() function, with
-         * an additional error message in front (given by the argument). Also pauses execution to wait for the user
-         * to read the error.
+         * an additional error message in front (given by the argument). Also optionally pauses execution to wait
+         * for the user to read the error.
          *
          * @param error_message the additional error message to put in front of the message for GetLastError()
+         * @param pause whether to pause execution until the user allows it to continue
          */
-        void print_last_error(const wchar_t *error_message) {
+        void print_last_error(const wchar_t *error_message, bool pause) {
             DWORD error = GetLastError();
             std::string error_message_sys = std::system_category().message(error);
             std::wstring error_message_sys_w(error_message_sys.begin(), error_message_sys.end());
             std::wcout << std::wstring(error_message) << L": " << error_message_sys_w << std::endl;
-            wait_for_user();
+            if (pause) {
+                wait_for_user();
+            }
         }
 
         /**
@@ -207,7 +210,7 @@ namespace wegapi {
             if (!exists) {
                 std::wstring error_message_user_w(error_message_user);
                 std::wcout << error_message_user_w << ":\n\t";
-                print_last_error(L"check_exists_perror");
+                print_last_error(L"", true);
                 return false;
             }
             return true;
