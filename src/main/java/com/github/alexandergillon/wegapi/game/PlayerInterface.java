@@ -10,16 +10,23 @@ public interface PlayerInterface extends Remote {
      *
      * @param playerNumber the new client's player number
      */
-    public void initialize(int playerNumber) throws RemoteException;
+    void initialize(int playerNumber) throws RemoteException;
 
-    public void displayMessage(String message, boolean error) throws RemoteException;
+    void displayMessage(String message, boolean error) throws RemoteException;
 
-    public enum CreateTilesMode {
+    enum CreateTilesMode {
         CREATE,
         CREATE_NEW,
         OVERWRITE_EXISTING
     }
-    public void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) throws RemoteException;
+    void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) throws RemoteException;
 
-    public void gameOver(boolean win) throws RemoteException;
+    enum DeleteTilesMode {
+        DELETE,
+        DELETE_EXISTING,
+        DELETE_ALL
+    }
+    void deleteTiles(ArrayList<Integer> tileIndices, DeleteTilesMode mode) throws RemoteException;
+
+    void gameOver(boolean win) throws RemoteException;
 }

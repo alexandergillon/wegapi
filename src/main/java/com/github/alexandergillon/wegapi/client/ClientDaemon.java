@@ -152,6 +152,15 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         }
     }
 
+    @Override
+    public void displayMessage(String message, boolean error) {
+        if (error) {
+            System.out.println("daemon: received ERROR message from server: " + message);
+        } else {
+            System.out.println("daemon: received message from server: " + message);
+        }
+    }
+
     private Process launchCreateTiles(Path gameDataDirPath, String tileData, CreateTilesMode mode) {
         Path createTilesExePath = gameDataDirPath.resolve("create_tiles.exe");
 
@@ -182,15 +191,6 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     }
 
     @Override
-    public void displayMessage(String message, boolean error) {
-        if (error) {
-            System.out.println("daemon: received ERROR message from server: " + message);
-        } else {
-            System.out.println("daemon: received message from server: " + message);
-        }
-    }
-
-    @Override
     public void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) {
         System.out.println("daemon: creating tiles...");
         // todo: use installed binaries in program files
@@ -213,6 +213,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
         Process p = launchCreateTiles(gameDataDirPath, tileData, mode);
 
+        // todo: fail more gracefully
         try {
             int exitCode = p.waitFor();
             if (exitCode != 0) {
@@ -222,6 +223,63 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         } catch (InterruptedException e) {
             // this shouldn't happen
             System.out.printf("interrupted while waiting for create_tiles process, %s%n", e.toString());
+            System.exit(1);
+        }
+    }
+
+    private Process launchDeleteTiles(Path gameDataDirPath, String tileData, DeleteTilesMode mode) {
+        Path deleteTilesExePath = gameDataDirPath.resolve("delete_tiles.exe");
+
+        try {
+            switch (mode) {
+                case DELETE:
+                    return new ProcessBuilder(deleteTilesExePath.toString(), gameDir.toString(), tileData)
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+                case DELETE_EXISTING:
+                    return new ProcessBuilder(deleteTilesExePath.toString(), gameDir.toString(), tileData, "-e")
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+                case DELETE_ALL:
+                    // delete_tiles needs some data here to parse args correctly, but it's ignored
+                    return new ProcessBuilder(deleteTilesExePath.toString(), gameDir.toString(), "0", "-a")
+                            .directory(new File(gameDataDirPath.toString()))
+                            .inheritIO()
+                            .start();
+            }
+        } catch (IOException e) {
+            System.out.printf("failed to create delete_tiles process, %s%n", e.toString());
+            System.exit(1);
+        }
+
+        return null; // for the compiler
+    }
+
+    @Override
+    public void deleteTiles(ArrayList<Integer> tileIndices, DeleteTilesMode mode) {
+        System.out.println("daemon: deleting tiles...");
+        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        checkExists(gameDataDirPath, true);
+
+        // tileIndices converted to strings
+        String[] indexStrings = tileIndices.stream().map(x -> Integer.toString(x)).toArray(String[]::new);
+        String tileData = String.join(",", indexStrings);
+        System.out.println("tiledata: " + tileData);
+
+        Process p = launchDeleteTiles(gameDataDirPath, tileData, mode);
+
+        // todo: fail more gracefully
+        try {
+            int exitCode = p.waitFor();
+            if (exitCode != 0) {
+                System.out.println("delete_tiles.exe failed");
+                System.exit(1);
+            }
+        } catch (InterruptedException e) {
+            // this shouldn't happen
+            System.out.printf("interrupted while waiting for delete_tiles process, %s%n", e.toString());
             System.exit(1);
         }
     }

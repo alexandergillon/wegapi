@@ -68,19 +68,19 @@ public interface GameInterface extends Remote {
     /**
      * Informs the server that a certain player double-clicked a certain tile.
      *
-     * @param tile the index of the tile that the player clicked
+     * @param tileIndex the index of the tile that the player clicked
      * @param player which player clicked the tile
      */
-    void tileClicked(int tile, PlayerData player) throws RemoteException;
+    void tileClicked(int tileIndex, PlayerData player) throws RemoteException;
 
     /**
      * Informs the server that a certain player dragged one tile to another.
      *
-     * @param fromTile the index of the tile that was dragged
-     * @param toTile the index of the tile that the tile was dragged to
+     * @param fromTileIndex the index of the tile that was dragged
+     * @param toTileIndex the index of the tile that the tile was dragged to
      * @param player the player who dragged the tile
      */
-    void tileDragged(int fromTile, int toTile, PlayerData player) throws RemoteException;
+    void tileDragged(int fromTileIndex, int toTileIndex, PlayerData player) throws RemoteException;
 
     static GameInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
         return connect(ip, port, defaultServerPath);

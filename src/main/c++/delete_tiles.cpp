@@ -286,8 +286,15 @@ static void delete_all_tiles(wchar_t *game_dir) {
     HANDLE search_handle = FindFirstFileW(search_path, &find_data);
 
     if (search_handle == INVALID_HANDLE_VALUE) {
-        wegapi::util::print_last_error(L"FindFirstFileW", true);
-        exit(EXIT_FAILURE);
+        DWORD error = GetLastError();
+        if (error == ERROR_FILE_NOT_FOUND) {
+            // no tiles - nothing to do
+            FindClose(search_handle);
+            return;
+        } else {
+            wegapi::util::print_last_error(L"FindFirstFileW", true);
+            exit(EXIT_FAILURE);
+        }
     }
 
     std::unordered_set<std::wstring> paths_to_delete;
@@ -343,6 +350,8 @@ static void delete_all_tiles(wchar_t *game_dir) {
         wegapi::util::wait_for_user();
         exit(EXIT_FAILURE);
     }
+
+    FindClose(search_handle);
 }
 
 /**
