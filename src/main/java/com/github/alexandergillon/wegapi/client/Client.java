@@ -17,7 +17,6 @@ import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.apache.commons.cli.*;
@@ -78,11 +77,11 @@ public class Client {
                 printHelpAndExit("None of -c, -d, or -t were specified (required).");
             }
         } catch (ParseException e) {
-            printHelpAndExit("ParseException: " + e.toString());
+            printHelpAndExit("ParseException: " + e);
         } catch (NumberFormatException e) {
-            printHelpAndExit("Invalid option argument: " + e.toString());
+            printHelpAndExit("Invalid option argument: " + e);
         } catch (RemoteException e) {
-            printHelpAndExit("Encountered RemoteException while parsing arguments: " + e.toString());
+            printHelpAndExit("Encountered RemoteException while parsing arguments: " + e);
         }
     }
 
@@ -95,9 +94,9 @@ public class Client {
         try {
             return DaemonInterface.connectToDaemon(DaemonInterface.defaultIp, DaemonInterface.rmiRegistryPort);
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while connecting to daemon, %s%n", e.toString());
+            System.out.printf("RemoteException while connecting to daemon, %s%n", e);
         } catch (NotBoundException e) {
-            System.out.printf("Daemon is not bound while connecting, %s%n", e.toString());
+            System.out.printf("Daemon is not bound while connecting, %s%n", e);
             try {
                 Arrays.asList(LocateRegistry.getRegistry().list()).forEach(System.out::println);
             } catch (RemoteException eprime) {
@@ -105,7 +104,7 @@ public class Client {
                 System.exit(1);
             }
         } catch (MalformedURLException e) {
-            System.out.printf("Malformed URL while connecting to daemon, %s%n", e.toString());
+            System.out.printf("Malformed URL while connecting to daemon, %s%n", e);
         }
         System.exit(1);
         return null;

@@ -51,15 +51,15 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             tempServer = GameServerInterface.connectToServer(GameServerInterface.defaultIp, GameServerInterface.rmiRegistryPort);
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while connecting to server, %s%n", e.toString());
+            System.out.printf("RemoteException while connecting to server, %s%n", e);
             System.exit(1);
             tempServer = null;
         } catch (NotBoundException e) {
-            System.out.printf("Server is not bound while connecting, %s%n", e.toString());
+            System.out.printf("Server is not bound while connecting, %s%n", e);
             System.exit(1);
             tempServer = null;
         } catch (MalformedURLException e) {
-            System.out.printf("Malformed URL while connecting to server, %s%n", e.toString());
+            System.out.printf("Malformed URL while connecting to server, %s%n", e);
             System.exit(1);
             tempServer = null;
         }
@@ -80,7 +80,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             server.tileClicked(tile, new GameServerInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e.toString());
+            System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e);
         }
     }
 
@@ -99,7 +99,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             server.tileDragged(fromTile, toTile, new GameServerInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e.toString());
+            System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e);
         }
     }
 
@@ -144,10 +144,10 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
             dataOutputStream.writeInt(playerNumber);
         } catch (FileNotFoundException e) {
-            System.out.printf("playerdata file could not be created, %s%n", e.toString());
+            System.out.printf("playerdata file could not be created, %s%n", e);
             System.exit(1);
         } catch (IOException e) {
-            System.out.printf("IOException while writing/closing playerdata, %s%n", e.toString());
+            System.out.printf("IOException while writing/closing playerdata, %s%n", e);
             System.exit(1);
         }
     }
@@ -183,7 +183,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
                             .start();
             }
         } catch (IOException e) {
-            System.out.printf("failed to create create_tiles process, %s%n", e.toString());
+            System.out.printf("failed to create create_tiles process, %s%n", e);
             System.exit(1);
         }
 
@@ -222,7 +222,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
             }
         } catch (InterruptedException e) {
             // this shouldn't happen
-            System.out.printf("interrupted while waiting for create_tiles process, %s%n", e.toString());
+            System.out.printf("interrupted while waiting for create_tiles process, %s%n", e);
             System.exit(1);
         }
     }
@@ -250,7 +250,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
                             .start();
             }
         } catch (IOException e) {
-            System.out.printf("failed to create delete_tiles process, %s%n", e.toString());
+            System.out.printf("failed to create delete_tiles process, %s%n", e);
             System.exit(1);
         }
 
@@ -259,6 +259,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
     @Override
     public void deleteTiles(ArrayList<Integer> tileIndices, DeleteTilesMode mode) {
+        // todo: handle null tileindices
         System.out.println("daemon: deleting tiles...");
         Path gameDataDirPath = gameDir.resolve(gameDataDirName);
         checkExists(gameDataDirPath, true);
@@ -279,7 +280,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
             }
         } catch (InterruptedException e) {
             // this shouldn't happen
-            System.out.printf("interrupted while waiting for delete_tiles process, %s%n", e.toString());
+            System.out.printf("interrupted while waiting for delete_tiles process, %s%n", e);
             System.exit(1);
         }
     }
@@ -296,7 +297,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             server.registerPlayer(this);
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while registering with server, %s%n", e.toString());
+            System.out.printf("RemoteException while registering with server, %s%n", e);
         }
     }
 
@@ -335,9 +336,9 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
             CommandLine cmdline = parser.parse(options, args);
             return cmdline.getOptionValue("d");
         } catch (ParseException e) {
-            printHelpAndExit("ParseException: " + e.toString());
+            printHelpAndExit("ParseException: " + e);
         } catch (NumberFormatException e) {
-            printHelpAndExit("Invalid option argument: " + e.toString());
+            printHelpAndExit("Invalid option argument: " + e);
         }
         return null;
     }
@@ -353,7 +354,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             daemon = new ClientDaemon(gameDir);
         } catch (RemoteException e) {
-            System.out.printf("RemoteException while instantiating daemon: %s%n", e.toString());
+            System.out.printf("RemoteException while instantiating daemon: %s%n", e);
             System.exit(1);
         }
 
@@ -366,10 +367,10 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             Naming.rebind("//" + DaemonInterface.defaultIp + ":" + DaemonInterface.rmiRegistryPort + "/" + DaemonInterface.defaultDaemonPath, daemon);
         } catch (RemoteException e) {
-            System.out.printf("Failed to rebind daemon, %s%n", e.toString());
+            System.out.printf("Failed to rebind daemon, %s%n", e);
             System.exit(1);
         } catch (MalformedURLException e) {
-            System.out.printf("Malformed URL: %s%n", e.toString());
+            System.out.printf("Malformed URL: %s%n", e);
             System.exit(1);
         }
         System.out.println("Daemon ready!");
