@@ -8,17 +8,16 @@ import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Server extends UnicastRemoteObject implements GameInterface {
+public class Server extends BaseServer implements GameInterface {
     private final HashMap<Integer, PlayerInterface> players = new HashMap<>();
     private final AtomicInteger playerNumber = new AtomicInteger();
 
     public Server() throws RemoteException {
-        super(0);
+        super();
     }
 
     @Override
@@ -28,42 +27,44 @@ public class Server extends UnicastRemoteObject implements GameInterface {
         players.put(thisPlayerNumber, player);
         try {
             player.initialize(thisPlayerNumber);
-            Tile tile = new Tile(0, "black-king-cream");
+            Tile tile1 = new Tile(0, "black-king-cream");
+            Tile tile2 = new Tile(1, "black-king-olive");
             ArrayList<Tile> tiles = new ArrayList<>();
-            tiles.add(tile);
+            tiles.add(tile1);
+            tiles.add(tile2);
+            player.deleteTiles(new ArrayList<>(), PlayerInterface.DeleteTilesMode.DELETE_ALL);
             player.createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
         } catch (RemoteException e) {
             System.out.println("server: player " + thisPlayerNumber + " not reachable while initializing," + e.toString());
         }
     }
 
-    static boolean cream = false; // only for tileClicked
+    static boolean cream = false; // only for tileClicked and tileDragged
     @Override
-    public void tileClicked(int tile, PlayerData player) {
-        System.out.printf("server: tile clicked: %d by player %d%n", tile, player.getPlayerNumber());
-        Tile t = new Tile(tile, cream ? "black-king-cream" : "black-king-olive");
+    public void tileClicked(int tileIndex, PlayerData playerData) {
+        System.out.printf("server: tile clicked: %d by player %d%n", tileIndex, playerData.getPlayerNumber());
+        Tile t1 = new Tile(tileIndex, cream ? "black-king-cream" : "black-king-olive");
+        Tile t2 = new Tile(tileIndex + 1, cream ? "black-king-cream" : "black-king-olive");
         ArrayList<Tile> tiles = new ArrayList<>();
-        tiles.add(t);
+        tiles.add(t1);
+        tiles.add(t2);
         try {
-            player.getPlayer().createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
+            playerData.getPlayer().createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
         } catch (RemoteException e) {
-            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
+            System.out.println("server: player " + playerData.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
         }
         cream = !cream;
     }
 
     @Override
-    public void tileDragged(int fromTile, int toTile, PlayerData player) {
-        System.out.printf("server: tile dragged: from %d to %d by player %d%n", fromTile, toTile, player.getPlayerNumber());
-        Tile t1 = new Tile(fromTile, cream ? "black-king-cream" : "black-king-olive");
-        Tile t2 = new Tile(toTile, cream ? "black-king-cream" : "black-king-olive");
-        ArrayList<Tile> tiles = new ArrayList<>();
-        tiles.add(t1);
-        tiles.add(t2);
+    public void tileDragged(int fromTileIndex, int toTileIndex, PlayerData playerData) {
+        System.out.printf("server: tile dragged: from %d to %d by player %d%n", fromTileIndex, toTileIndex, playerData.getPlayerNumber());
+        ArrayList<Integer> toDelete = new ArrayList<>();
+        toDelete.add(toTileIndex);
         try {
-            player.getPlayer().createTiles(tiles, PlayerInterface.CreateTilesMode.CREATE);
+            playerData.getPlayer().deleteTiles(toDelete, PlayerInterface.DeleteTilesMode.DELETE_EXISTING);
         } catch (RemoteException e) {
-            System.out.println("server: player " + player.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
+            System.out.println("server: player " + playerData.getPlayerNumber() + " not reachable while responding to tileClicked" + e.toString());
         }
         cream = !cream;
     }

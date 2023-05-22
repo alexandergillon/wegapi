@@ -4,6 +4,8 @@ target/
 !**/src/test/**/target/
 /game/
 /test/
+/scripts/
+/art/
 
 *.javaignore
 
