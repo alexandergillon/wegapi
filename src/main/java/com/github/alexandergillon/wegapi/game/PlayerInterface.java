@@ -1,10 +1,41 @@
 package com.github.alexandergillon.wegapi.game;
 
+import java.io.Serializable;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 public interface PlayerInterface extends Remote {
+    class Tile implements Serializable {
+        private final int index;
+        private final String iconName;
+        private final String tileName; // may be null
+
+        public Tile(int index, String iconName) {
+            this.index = index;
+            this.iconName = iconName;
+            this.tileName = null;
+        }
+
+        public Tile(int index, String iconName, String tileName) {
+            this.index = index;
+            this.iconName = iconName;
+            this.tileName = tileName;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public String getIconName() {
+            return iconName;
+        }
+
+        public String getTileName() {
+            return tileName;
+        }
+    }
+
     /**
      * Informs a newly-joined client of their player number.
      *
@@ -19,7 +50,7 @@ public interface PlayerInterface extends Remote {
         CREATE_NEW,
         OVERWRITE_EXISTING
     }
-    void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) throws RemoteException;
+    void createTiles(ArrayList<Tile> tiles, CreateTilesMode mode) throws RemoteException;
 
     enum DeleteTilesMode {
         DELETE,

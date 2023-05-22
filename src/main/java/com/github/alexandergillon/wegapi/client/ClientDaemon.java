@@ -191,7 +191,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     }
 
     @Override
-    public void createTiles(ArrayList<GameInterface.Tile> tiles, CreateTilesMode mode) {
+    public void createTiles(ArrayList<Tile> tiles, CreateTilesMode mode) {
         System.out.println("daemon: creating tiles...");
         // todo: use installed binaries in program files
         // todo: concurrency
@@ -199,7 +199,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         checkExists(gameDataDirPath, true);
 
         ArrayList<String> stringifiedTiles = new ArrayList<>();
-        for (GameInterface.Tile tile : tiles) {
+        for (Tile tile : tiles) {
             String stringifiedTile;
             if (tile.getTileName() == null) {
                 stringifiedTile = String.join(":", Integer.toString(tile.getIndex()), tile.getIconName());

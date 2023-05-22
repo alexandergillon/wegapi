@@ -79,12 +79,12 @@ public abstract class BaseServer2D extends BaseServer implements GameInterface2D
             player.displayMessage(message, error);
         }
 
-        private Tile tile2Dto1D(Tile2D tile) {
-            return new Tile(parent.coordsToIndex(tile.getRow(), tile.getCol()), tile.getIconName(), tile.getTileName());
+        private PlayerInterface.Tile tile2Dto1D(Tile2D tile) {
+            return new PlayerInterface.Tile(parent.coordsToIndex(tile.getRow(), tile.getCol()), tile.getIconName(), tile.getTileName());
         }
 
-        private ArrayList<Tile> tiles2Dto1D(ArrayList<Tile2D> tiles) {
-            ArrayList<Tile> tiles1D = new ArrayList<>(tiles.size());
+        private ArrayList<PlayerInterface.Tile> tiles2Dto1D(ArrayList<Tile2D> tiles) {
+            ArrayList<PlayerInterface.Tile> tiles1D = new ArrayList<>(tiles.size());
             for (Tile2D tile : tiles) {
                 tiles1D.add(tile2Dto1D(tile));
             }

@@ -12,36 +12,6 @@ public interface GameInterface extends Remote {
     int rmiRegistryPort = 1099;
     String defaultServerPath = "WEGAPI/GameServer";
 
-    static class Tile implements Serializable {
-        private final int index;
-        private final String iconName;
-        private final String tileName; // may be null
-
-        public Tile(int index, String iconName) {
-            this.index = index;
-            this.iconName = iconName;
-            this.tileName = null;
-        }
-
-        public Tile(int index, String iconName, String tileName) {
-            this.index = index;
-            this.iconName = iconName;
-            this.tileName = tileName;
-        }
-
-        public int getIndex() {
-            return index;
-        }
-
-        public String getIconName() {
-            return iconName;
-        }
-
-        public String getTileName() {
-            return tileName;
-        }
-    }
-
     static class PlayerData implements Serializable {
         private final int playerNumber;
         private final PlayerInterface player;

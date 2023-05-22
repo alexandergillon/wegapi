@@ -27,9 +27,9 @@ public class Server extends BaseServer implements GameInterface {
         players.put(thisPlayerNumber, player);
         try {
             player.initialize(thisPlayerNumber);
-            Tile tile1 = new Tile(0, "black-king-cream");
-            Tile tile2 = new Tile(1, "black-king-olive");
-            ArrayList<Tile> tiles = new ArrayList<>();
+            PlayerInterface.Tile tile1 = new PlayerInterface.Tile(0, "black-king-cream");
+            PlayerInterface.Tile tile2 = new PlayerInterface.Tile(1, "black-king-olive");
+            ArrayList<PlayerInterface.Tile> tiles = new ArrayList<>();
             tiles.add(tile1);
             tiles.add(tile2);
             player.deleteTiles(new ArrayList<>(), PlayerInterface.DeleteTilesMode.DELETE_ALL);
@@ -43,9 +43,9 @@ public class Server extends BaseServer implements GameInterface {
     @Override
     public void tileClicked(int tileIndex, PlayerData playerData) {
         System.out.printf("server: tile clicked: %d by player %d%n", tileIndex, playerData.getPlayerNumber());
-        Tile t1 = new Tile(tileIndex, cream ? "black-king-cream" : "black-king-olive");
-        Tile t2 = new Tile(tileIndex + 1, cream ? "black-king-cream" : "black-king-olive");
-        ArrayList<Tile> tiles = new ArrayList<>();
+        PlayerInterface.Tile t1 = new PlayerInterface.Tile(tileIndex, cream ? "black-king-cream" : "black-king-olive");
+        PlayerInterface.Tile t2 = new PlayerInterface.Tile(tileIndex + 1, cream ? "black-king-cream" : "black-king-olive");
+        ArrayList<PlayerInterface.Tile> tiles = new ArrayList<>();
         tiles.add(t1);
         tiles.add(t2);
         try {
