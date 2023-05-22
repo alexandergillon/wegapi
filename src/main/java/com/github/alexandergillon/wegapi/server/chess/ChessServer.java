@@ -1,6 +1,6 @@
 package com.github.alexandergillon.wegapi.server.chess;
 
-import com.github.alexandergillon.wegapi.game.GameInterface;
+import com.github.alexandergillon.wegapi.game.GameServerInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface2D;
 import com.github.alexandergillon.wegapi.server.BaseServer2D;
@@ -88,14 +88,14 @@ public class ChessServer extends BaseServer2D {
 
     public static void main(String[] args) {
         try {
-            LocateRegistry.createRegistry(GameInterface.rmiRegistryPort);
+            LocateRegistry.createRegistry(GameServerInterface.rmiRegistryPort);
         } catch (RemoteException ignore) {
             // RMI server already exists
         }
 
         try {
             ChessServer server = new ChessServer();
-            Naming.rebind("//" + GameInterface.defaultIp + ":" + GameInterface.rmiRegistryPort + "/" + GameInterface.defaultServerPath, server);
+            Naming.rebind("//" + GameServerInterface.defaultIp + ":" + GameServerInterface.rmiRegistryPort + "/" + GameServerInterface.defaultServerPath, server);
         } catch (RemoteException e) {
             System.out.printf("Failed to rebind server, %s%n", e);
             System.exit(1);

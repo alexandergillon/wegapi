@@ -1,7 +1,7 @@
 package com.github.alexandergillon.wegapi.client;
 
 import com.github.alexandergillon.wegapi.game.DaemonInterface;
-import com.github.alexandergillon.wegapi.game.GameInterface;
+import com.github.alexandergillon.wegapi.game.GameServerInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
 import org.apache.commons.cli.*;
 
@@ -35,7 +35,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     private boolean gameOver = false; // todo: use
 
     private final ReentrantLock actionLock = new ReentrantLock(true);
-    private final GameInterface server;
+    private final GameServerInterface server;
 
     /**
      * Creates a client daemon that uses userDir as its game directory.
@@ -47,9 +47,9 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         super(0);
         gameDir = Paths.get(userDir);
 
-        GameInterface tempServer;
+        GameServerInterface tempServer;
         try {
-            tempServer = GameInterface.connectToServer(GameInterface.defaultIp, GameInterface.rmiRegistryPort);
+            tempServer = GameServerInterface.connectToServer(GameServerInterface.defaultIp, GameServerInterface.rmiRegistryPort);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to server, %s%n", e.toString());
             System.exit(1);
@@ -78,7 +78,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileClicked(int tile) {
         System.out.printf("daemon: tile clicked: %d%n", tile);
         try {
-            server.tileClicked(tile, new GameInterface.PlayerData(playerNumber, this));
+            server.tileClicked(tile, new GameServerInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e.toString());
         }
@@ -97,7 +97,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileDragged(int fromTile, int toTile) {
         System.out.printf("daemon: tile dragged: from %d to %d%n", fromTile, toTile);
         try {
-            server.tileDragged(fromTile, toTile, new GameInterface.PlayerData(playerNumber, this));
+            server.tileDragged(fromTile, toTile, new GameServerInterface.PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e.toString());
         }
@@ -347,6 +347,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
      * running in the directory specified by the user.
      */
     public static void main(String[] args) {
+        // todo: search for in progress game
         String gameDir = parseArgs(args);
         ClientDaemon daemon = null;
         try {

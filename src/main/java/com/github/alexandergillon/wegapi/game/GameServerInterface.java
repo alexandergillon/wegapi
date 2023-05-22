@@ -7,10 +7,10 @@ import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
-public interface GameInterface extends Remote {
+public interface GameServerInterface extends Remote {
     String defaultIp = "127.0.0.1";
     int rmiRegistryPort = 1099;
-    String defaultServerPath = "WEGAPI/GameServer";
+    String defaultServerPath = "WEGAPI/GameServer"; // path to bind the game server to in the registry
 
     static class PlayerData implements Serializable {
         private final int playerNumber;
@@ -31,7 +31,8 @@ public interface GameInterface extends Remote {
     }
 
     /**
-     * Informs the server that a client has joined the game for the first time.
+     * Informs the server that a client has joined the game for the first time. This is when the daemon has just
+     * started, and did not find any game already in progress to recover.
      */
     void registerPlayer(PlayerInterface player) throws RemoteException;
 
@@ -52,11 +53,11 @@ public interface GameInterface extends Remote {
      */
     void tileDragged(int fromTileIndex, int toTileIndex, PlayerData player) throws RemoteException;
 
-    static GameInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
+    static GameServerInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
         return connect(ip, port, defaultServerPath);
     }
 
-    static GameInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {
-        return (GameInterface) Naming.lookup("//" + ip + ":" + port + "/" + path);
+    static GameServerInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {
+        return (GameServerInterface) Naming.lookup("//" + ip + ":" + port + "/" + path);
     }
 }

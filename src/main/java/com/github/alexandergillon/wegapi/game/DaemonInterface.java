@@ -9,7 +9,7 @@ import java.rmi.RemoteException;
 public interface DaemonInterface extends Remote {
     String defaultIp = "127.0.0.1";
     int rmiRegistryPort = 1099;
-    String defaultDaemonPath = "WEGAPI/ClientDaemon";
+    String defaultDaemonPath = "WEGAPI/ClientDaemon"; // path to bind the daemon to in the registry
 
     /**
      * Informs the daemon that the player double-clicked a certain tile.

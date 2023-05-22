@@ -1,12 +1,12 @@
 package com.github.alexandergillon.wegapi.server;
 
-import com.github.alexandergillon.wegapi.game.GameInterface;
+import com.github.alexandergillon.wegapi.game.GameServerInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-public abstract class BaseServer extends UnicastRemoteObject implements GameInterface {
+public abstract class BaseServer extends UnicastRemoteObject implements GameServerInterface {
     public BaseServer() throws RemoteException {
         super(0);
     }

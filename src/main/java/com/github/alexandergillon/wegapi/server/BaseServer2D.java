@@ -1,13 +1,13 @@
 package com.github.alexandergillon.wegapi.server;
 
-import com.github.alexandergillon.wegapi.game.GameInterface2D;
+import com.github.alexandergillon.wegapi.game.GameServerInterface2D;
 import com.github.alexandergillon.wegapi.game.PlayerInterface;
 import com.github.alexandergillon.wegapi.game.PlayerInterface2D;
 
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
-public abstract class BaseServer2D extends BaseServer implements GameInterface2D {
+public abstract class BaseServer2D extends BaseServer implements GameServerInterface2D {
     private final int rows;
     private final int cols;
 

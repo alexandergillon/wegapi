@@ -1,16 +1,9 @@
 package com.github.alexandergillon.wegapi.game;
 
-import java.io.Serializable;
-import java.net.MalformedURLException;
-import java.rmi.Naming;
-import java.rmi.NotBoundException;
-import java.rmi.Remote;
-import java.rmi.RemoteException;
-
-public interface GameInterface2D {
-    String defaultIp = GameInterface.defaultIp;
-    int rmiRegistryPort = GameInterface.rmiRegistryPort;
-    String defaultServerPath = GameInterface.defaultServerPath;
+public interface GameServerInterface2D {
+    String defaultIp = GameServerInterface.defaultIp;
+    int rmiRegistryPort = GameServerInterface.rmiRegistryPort;
+    String defaultServerPath = GameServerInterface.defaultServerPath;
 
     static class PlayerData2D {
         private final int playerNumber;
