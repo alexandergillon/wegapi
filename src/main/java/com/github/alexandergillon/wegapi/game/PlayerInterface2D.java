@@ -3,6 +3,17 @@ package com.github.alexandergillon.wegapi.game;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
+/**
+ * Interface that can be used to tell a player to do something, for a 2D game. For example, show certain tiles to
+ * the player, or a message. <br> <br>
+ *
+ * For developers of 2D games based on WEGAPI: this interface is essentially all the things you can get a player
+ * to 'do'. <br> <br>
+ *
+ * For developers of WEGAPI itself: see BaseServer2D.java for how this interface fits into the WEGAPI model. This
+ * interface is actually a wrapper on underlying (1D) functions via the PlayerInterface, and so this interface
+ * is not used directly for RMI communication.
+ */
 public interface PlayerInterface2D {
     /**
      * Represents a tile's position in the game directory, as a (row, column) pair. Rows start at the top

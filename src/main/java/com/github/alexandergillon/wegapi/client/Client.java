@@ -13,16 +13,20 @@ todo: authentication / access tokens?
 todo: ensure tile program has finished before doing anything?
  */
 
+import com.github.alexandergillon.wegapi.game.DaemonInterface;
+import org.apache.commons.cli.*;
+
 import java.net.MalformedURLException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.util.Arrays;
 
-import org.apache.commons.cli.*;
-
-import com.github.alexandergillon.wegapi.game.DaemonInterface;
-
+/**
+ * Class which contains a program that contacts the Client daemon, to inform it that the user has made an action.
+ * Invoked by C++ code in the tile.exe executable, by running Java at the command line. See ClientDaemon.java
+ * for more information about how communication works, and what the daemon achieves.
+ */
 public class Client {
     /**
      * Prints a help message and exits.
@@ -92,7 +96,7 @@ public class Client {
      */
     private static DaemonInterface connectToDaemon() {
         try {
-            return DaemonInterface.connectToDaemon(DaemonInterface.defaultIp, DaemonInterface.rmiRegistryPort);
+            return DaemonInterface.connectToDaemon(DaemonInterface.DEFAULT_IP, DaemonInterface.RMI_REGISTRY_PORT);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to daemon, %s%n", e);
         } catch (NotBoundException e) {

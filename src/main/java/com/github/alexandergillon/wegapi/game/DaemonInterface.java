@@ -6,10 +6,14 @@ import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+/**
+ * Interface used by the Client.java program to contact the daemon running on their local machine. See ClientDaemon.java
+ * for more information about how communication works, and what the daemon achieves.
+ */
 public interface DaemonInterface extends Remote {
-    String defaultIp = "127.0.0.1";
-    int rmiRegistryPort = 1099;
-    String defaultDaemonPath = "WEGAPI/ClientDaemon"; // path to bind the daemon to in the registry
+    String DEFAULT_IP = "127.0.0.1";
+    int RMI_REGISTRY_PORT = 1099;
+    String DEFAULT_DAEMON_PATH = "WEGAPI/ClientDaemon"; // path to bind the daemon to in the registry
 
     /**
      * Informs the daemon that the player double-clicked a certain tile.
@@ -27,7 +31,7 @@ public interface DaemonInterface extends Remote {
     void tileDragged(int fromTile, int toTile) throws RemoteException;
 
     static DaemonInterface connectToDaemon(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
-        return connect(ip, port, defaultDaemonPath);
+        return connect(ip, port, DEFAULT_DAEMON_PATH);
     }
 
     static DaemonInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {

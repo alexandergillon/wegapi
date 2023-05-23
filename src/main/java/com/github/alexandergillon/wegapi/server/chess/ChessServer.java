@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/** Server that runs the chess game. */
 public class ChessServer extends BaseServer2D {
+    /** Class that encapsulates chess-specific player data. */
     private static class ChessPlayerData {
         private final int playerNumber;
         private PlayerInterface2D player;
@@ -42,18 +44,24 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
-    private final HashMap<Integer, ChessPlayerData> players = new HashMap<>();
-    private AtomicInteger playerNumber = new AtomicInteger();
+    private final HashMap<Integer, ChessPlayerData> players = new HashMap<>(); // maps player number to their data
+    private final AtomicInteger playerNumber = new AtomicInteger();
+    private final ChessBoard chessBoard;
     private ChessPiece.PlayerColor currentPlayer = ChessPiece.PlayerColor.WHITE;
-    private ChessBoard chessBoard;
 
+    /** Creates a new ChessServer object, which exports itself via RMI. */
     public ChessServer() throws RemoteException {
-        super(ChessBoard.numRows, ChessBoard.numCols);
-        chessBoard = new ChessBoard();
+        super(ChessBoard.NUM_ROWS, ChessBoard.NUM_COLS);
+        chessBoard = new ChessBoard();  // initializes a chess board to the starting setup of chess
     }
 
-
-    private final ChessPiece.PlayerColor getPlayerColor(int thisPlayerNumber) {
+    /**
+     * Gets the player color of a player with a certain player number. For now, 0 = white, 1 = black.
+     *
+     * @param thisPlayerNumber the number of a player in the game
+     * @return the player color of that player
+     */
+    private ChessPiece.PlayerColor getPlayerColor(int thisPlayerNumber) {
         if (thisPlayerNumber % 2 == 0) {
             return ChessPiece.PlayerColor.WHITE;
         } else {
@@ -72,7 +80,7 @@ public class ChessServer extends BaseServer2D {
             player.deleteTiles(new ArrayList<>(), PlayerInterface.DeleteTilesMode.DELETE_ALL);
             player.createTiles(chessBoard.toTiles(playerColor), PlayerInterface.CreateTilesMode.CREATE_NEW);
         } catch (RemoteException e) {
-            System.out.println("server: player " + thisPlayerNumber + " not reachable while initializing," + e.toString());
+            System.out.println("server: player " + thisPlayerNumber + " not reachable while initializing," + e);
         }
     }
 
@@ -86,16 +94,21 @@ public class ChessServer extends BaseServer2D {
         System.out.println("player #" + playerData.getPlayerNumber() + " dragged (" + fromRow + ", " + fromCol + ") to (" + toRow + ", " + toCol + ")");
     }
 
+    /**
+     * Main function. Starts the server and exports it via RMI.
+     *
+     * @param args for now, unused
+     */
     public static void main(String[] args) {
         try {
-            LocateRegistry.createRegistry(GameServerInterface.rmiRegistryPort);
+            LocateRegistry.createRegistry(GameServerInterface.RMI_REGISTRY_PORT);
         } catch (RemoteException ignore) {
             // RMI server already exists
         }
 
         try {
             ChessServer server = new ChessServer();
-            Naming.rebind("//" + GameServerInterface.defaultIp + ":" + GameServerInterface.rmiRegistryPort + "/" + GameServerInterface.defaultServerPath, server);
+            Naming.rebind("//" + GameServerInterface.DEFAULT_IP + ":" + GameServerInterface.RMI_REGISTRY_PORT + "/" + GameServerInterface.DEFAULT_SERVER_PATH, server);
         } catch (RemoteException e) {
             System.out.printf("Failed to rebind server, %s%n", e);
             System.exit(1);

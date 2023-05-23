@@ -1,5 +1,18 @@
 package com.github.alexandergillon.wegapi.game;
 
+/**
+ * Interface that a game server needs to implement to accept and process user actions, for a 2D game. <br> <br>
+ *
+ * For developers of games based on WEGAPI: in order to create a 2D game, subclass BaseServer2D, which will require
+ * you to implement the methods in this interface. WEGAPI will handle client input, displaying the game to the client,
+ * etc. <br> <br>
+ *
+ * For developers of WEGAPI itself: see BaseServer2D.java for how this interface fits into the WEGAPI model. This
+ * interface is actually a wrapper on underlying (1D) functions via the GameServerInterface, and so this interface
+ * is not used directly for RMI communication.
+ *
+ * todo: write a tutorial about how to create a game with wegapi
+ */
 public interface GameServerInterface2D {
     /** 2D equivalent of GameServerInterface::PlayerData. */
     // todo: make secure (player cannot forge actions from other players)

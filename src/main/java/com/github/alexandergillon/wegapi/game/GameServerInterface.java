@@ -7,10 +7,22 @@ import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+/**
+ * Interface that a game server needs to implement to accept and process user actions. <br> <br>
+ *
+ * For developers of games based on WEGAPI: in order to create a game, subclass BaseServer, which will require
+ * you to implement the methods in this interface. WEGAPI will handle client input, displaying the game to the client,
+ * etc. <br> <br>
+ *
+ * For developers of WEGAPI itself: see ClientDaemon.java for more information about how communication works, and
+ * what the daemon achieves. This interface is used by the client daemon to contact the server.
+ *
+ * todo: write a tutorial about how to create a game with wegapi
+ */
 public interface GameServerInterface extends Remote {
-    String defaultIp = "127.0.0.1";
-    int rmiRegistryPort = 1099;
-    String defaultServerPath = "WEGAPI/GameServer"; // path to bind the game server to in the registry
+    String DEFAULT_IP = "127.0.0.1";
+    int RMI_REGISTRY_PORT = 1099;
+    String DEFAULT_SERVER_PATH = "WEGAPI/GameServer"; // path to bind the game server to in the registry
 
     /**
      * Class that bundles data about a player. Sent to the server when a player makes an action, so that the server
@@ -65,7 +77,7 @@ public interface GameServerInterface extends Remote {
     void tileDragged(int fromTileIndex, int toTileIndex, PlayerData player) throws RemoteException;
 
     static GameServerInterface connectToServer(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
-        return connect(ip, port, defaultServerPath);
+        return connect(ip, port, DEFAULT_SERVER_PATH);
     }
 
     static GameServerInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {

@@ -7,6 +7,13 @@ import com.github.alexandergillon.wegapi.game.PlayerInterface2D;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
+/**
+ * A base 2D server, designed to be subclassed to make a 2D game with WEGAPI. <br> <br>
+ *
+ * For developers of WEGAPI itself (not developers of games based on WEGAPI): wraps all 1D communication that comes in/
+ * goes out with GameServerInterface and PlayerInterface into communication that uses GameServerInterface2D and
+ * PlayerInterface2D. See implementation for more details.
+ */
 public abstract class BaseServer2D extends BaseServer implements GameServerInterface2D {
     /**
      * Creates a BaseServer2D with the appropriate rows and cols. Must be called by subclasses in their constructor.

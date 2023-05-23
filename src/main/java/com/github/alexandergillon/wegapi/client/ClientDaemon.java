@@ -20,15 +20,45 @@ import java.util.concurrent.locks.ReentrantLock;
 
 // todo: if lock is held, abort action
 
+/**
+ * Class which contains a daemon program, that manages a game. This program is intended to be long-running, and
+ * handles user interaction and processes commands from the server. <br> <br>
+ *
+ * When the user makes an action (such as double clicking a tile, or dragging one tile to another), they use the
+ * Client class to contact this daemon. This daemon then forwards the request to the server, and processes any
+ * commands it has in response. <br> <br>
+ *
+ * Communication between parties is achieved as follows: <br> <br>
+ *
+ *   - A Client communicates with a ClientDaemon via the DaemonInterface, over RMI on the local machine. Strictly,
+ *     this does not need to be local (the daemon could run on a remote machine), but this doesn't make much sense as
+ *     it would introduce unnecessary latency. <br>
+ *   - A ClientDaemon communicates with a game server via the GameServerInterface, over RMI. The server may be on a
+ *     local or remote machine. <br>
+ *   - A game server communicates with a ClientDaemon via the PlayerInterface, over RMI. The server uses a remote
+ *     object sent by the daemon on each call to respond, and these are essentially callbacks. <br> <br>
+ *
+ * It should hopefully be obvious that we need some sort of daemon program that is listening for changes from the
+ * server. For example, in a turn-based game, some other player may make a move, and we need that change to be
+ * reflected on this player. However, it might not be obvious why we want the player's tile.exe to contact this
+ * daemon rather than the server directly. This is done so that we can have some control over concurrency. What should
+ * happen if the user clicked a tile, but the server was already in the process of changing the game state? A 'naive'
+ * Client program would forward the request regardless, but perhaps we might want to prevent that action from
+ * occurring and perhaps tell the user that things were changing right as they clicked something. For certain games
+ * we may indeed want to just forward the request regardless. A daemon allows us to choose which behavior we want,
+ * and when.
+ *
+ * todo: concurrency control and options for servers to set it
+ */
 public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface, PlayerInterface {
-    private final String gameDataDirName = ".gamedata";
-    private final String playerDataFilename = "playerdata.wegapi";
-    private final String playerDataMagic = "WEGAPIPLAYERDATA";
+    private static final String GAME_DATA_DIR_NAME = ".gamedata";
+    private static final String PLAYER_DATA_FILENAME = "playerdata.wegapi";
+    private static final String PLAYER_DATA_MAGIC = "WEGAPIPLAYERDATA";
 
     // 0.1.0
-    private final int majorVersionNumber = 0;
-    private final int minorVersionNumber = 1;
-    private final int patchVersionNumber = 0;
+    private static final int MAJOR_VERSION_NUMBER = 0;
+    private static final int MINOR_VERSION_NUMBER = 1;
+    private static final int PATCH_VERSION_NUMBER = 0;
 
     private final Path gameDir;
     private int playerNumber = -1;
@@ -49,7 +79,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
         GameServerInterface tempServer;
         try {
-            tempServer = GameServerInterface.connectToServer(GameServerInterface.defaultIp, GameServerInterface.rmiRegistryPort);
+            tempServer = GameServerInterface.connectToServer(GameServerInterface.DEFAULT_IP, GameServerInterface.RMI_REGISTRY_PORT);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to server, %s%n", e);
             System.exit(1);
@@ -128,19 +158,19 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         System.out.println("daemon: initializing, got player #" + playerNumber);
         this.playerNumber = playerNumber;
 
-        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
         checkExists(gameDataDirPath, true);
-        Path playerDataPath = gameDataDirPath.resolve(playerDataFilename);
+        Path playerDataPath = gameDataDirPath.resolve(PLAYER_DATA_FILENAME);
         File playerData = new File(playerDataPath.toString());
 
         try (FileOutputStream playerDataStream = new FileOutputStream(playerData)) {
-            byte[] magic = playerDataMagic.getBytes(StandardCharsets.US_ASCII);
+            byte[] magic = PLAYER_DATA_MAGIC.getBytes(StandardCharsets.US_ASCII);
             playerDataStream.write(magic);
 
             DataOutputStream dataOutputStream = new DataOutputStream(playerDataStream);
-            dataOutputStream.writeInt(majorVersionNumber);
-            dataOutputStream.writeInt(minorVersionNumber);
-            dataOutputStream.writeInt(patchVersionNumber);
+            dataOutputStream.writeInt(MAJOR_VERSION_NUMBER);
+            dataOutputStream.writeInt(MINOR_VERSION_NUMBER);
+            dataOutputStream.writeInt(PATCH_VERSION_NUMBER);
 
             dataOutputStream.writeInt(playerNumber);
         } catch (FileNotFoundException e) {
@@ -195,7 +225,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         System.out.println("daemon: creating tiles...");
         // todo: use installed binaries in program files
         // todo: concurrency
-        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
         checkExists(gameDataDirPath, true);
 
         ArrayList<String> stringifiedTiles = new ArrayList<>();
@@ -261,7 +291,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void deleteTiles(ArrayList<Integer> tileIndices, DeleteTilesMode mode) {
         // todo: handle null tileindices
         System.out.println("daemon: deleting tiles...");
-        Path gameDataDirPath = gameDir.resolve(gameDataDirName);
+        Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
         checkExists(gameDataDirPath, true);
 
         // tileIndices converted to strings
@@ -359,13 +389,13 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         }
 
         try {
-            LocateRegistry.createRegistry(DaemonInterface.rmiRegistryPort);
+            LocateRegistry.createRegistry(DaemonInterface.RMI_REGISTRY_PORT);
         } catch (RemoteException ignore) {
             // RMI server already exists
         }
 
         try {
-            Naming.rebind("//" + DaemonInterface.defaultIp + ":" + DaemonInterface.rmiRegistryPort + "/" + DaemonInterface.defaultDaemonPath, daemon);
+            Naming.rebind("//" + DaemonInterface.DEFAULT_IP + ":" + DaemonInterface.RMI_REGISTRY_PORT + "/" + DaemonInterface.DEFAULT_DAEMON_PATH, daemon);
         } catch (RemoteException e) {
             System.out.printf("Failed to rebind daemon, %s%n", e);
             System.exit(1);

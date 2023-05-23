@@ -6,6 +6,17 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 // todo: a note on indices
+
+/**
+ * Interface that can be used to tell a player to do something. For example, show certain tiles to the player, or a
+ * message. <br> <br>
+ *
+ * For developers of games based on WEGAPI: this interface is essentially all the things you can get a player
+ * to 'do'. <br> <br>
+ *
+ * For developers of WEGAPI itself: see ClientDaemon.java for more information about how communication works, and
+ * what the daemon achieves. This interface is used by the server to contact a client's daemon.
+ */
 public interface PlayerInterface extends Remote {
     /**
      * Class that encapsulates information about a tile in a player's game directory. Used for creating new
