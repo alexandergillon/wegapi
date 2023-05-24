@@ -1,5 +1,7 @@
 package com.github.alexandergillon.wegapi.game;
 
+import com.github.alexandergillon.wegapi.client.Util;
+
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
@@ -13,7 +15,11 @@ import java.rmi.RemoteException;
 public interface DaemonInterface extends Remote {
     String DEFAULT_IP = "127.0.0.1";
     int RMI_REGISTRY_PORT = 1099;
-    String DEFAULT_DAEMON_PATH = "WEGAPI/ClientDaemon"; // path to bind the daemon to in the registry
+    String DEFAULT_DAEMON_PATH = "WEGAPI/ClientDaemon/"; // path to bind the daemon to in the registry
+
+    String GAME_DATA_DIR_NAME = ".gamedata";
+    String DAEMON_NUMBER_FILENAME = "daemonnumber.wegapi";
+    String DAEMON_NUMBER_MAGIC = "WEGAPIDAEMONNUMBER";
 
     /**
      * Informs the daemon that the player double-clicked a certain tile.
@@ -30,11 +36,11 @@ public interface DaemonInterface extends Remote {
      */
     void tileDragged(int fromTile, int toTile) throws RemoteException;
 
-    static DaemonInterface connectToDaemon(String ip, int port) throws RemoteException, NotBoundException, MalformedURLException {
-        return connect(ip, port, DEFAULT_DAEMON_PATH);
+    static DaemonInterface connectToDaemon(String ip, int port, int daemonNumber) throws RemoteException, NotBoundException, MalformedURLException {
+        return connect(Util.buildDaemonRMIPath(ip, port, daemonNumber));
     }
 
-    static DaemonInterface connect(String ip, int port, String path) throws RemoteException, NotBoundException, MalformedURLException {
-        return (DaemonInterface) Naming.lookup("//" + ip + ":" + port + "/" + path);
+    static DaemonInterface connect(String path) throws RemoteException, NotBoundException, MalformedURLException {
+        return (DaemonInterface) Naming.lookup(path);
     }
 }

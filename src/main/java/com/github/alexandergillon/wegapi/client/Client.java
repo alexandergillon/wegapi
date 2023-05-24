@@ -16,7 +16,11 @@ todo: ensure tile program has finished before doing anything?
 import com.github.alexandergillon.wegapi.game.DaemonInterface;
 import org.apache.commons.cli.*;
 
+import java.io.*;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -89,6 +93,32 @@ public class Client {
         }
     }
 
+    private static int readDaemonNumber() {
+        Path gameDataDirPath = Paths.get(".").toAbsolutePath().normalize().resolve(DaemonInterface.GAME_DATA_DIR_NAME);  // todo: pass path from c++
+        Util.checkExists(gameDataDirPath, true);
+        Path daemonNumberPath = gameDataDirPath.resolve(DaemonInterface.DAEMON_NUMBER_FILENAME);
+        File daemonNumberFile = new File(daemonNumberPath.toString());
+
+        try (FileInputStream daemonNumberStream = new FileInputStream(daemonNumberFile)) {
+            byte[] magic = DaemonInterface.DAEMON_NUMBER_MAGIC.getBytes(StandardCharsets.US_ASCII);
+            byte[] magicRead = daemonNumberStream.readNBytes(magic.length);
+            if (!Arrays.equals(magicRead, magic)) {
+                System.out.println("Error: magic at the start of daemonnumber.wegapi is not as expected");
+                System.exit(1);
+            }
+
+            DataInputStream dataInputStream = new DataInputStream(daemonNumberStream);
+            return dataInputStream.readInt();
+        } catch (FileNotFoundException e) {
+            System.out.printf("daemonnumber file could not be found, %s%n", e);
+            System.exit(1);
+        } catch (IOException e) {
+            System.out.printf("IOException while reading/closing daemonnumber, %s%n", e);
+            System.exit(1);
+        }
+        return -1;  // for the compiler
+    }
+
     /**
      * Connects to the client daemon, returning a remote object that exports the DaemonInterface interface.
      *
@@ -96,7 +126,9 @@ public class Client {
      */
     private static DaemonInterface connectToDaemon() {
         try {
-            return DaemonInterface.connectToDaemon(DaemonInterface.DEFAULT_IP, DaemonInterface.RMI_REGISTRY_PORT);
+            int daemonNumber = readDaemonNumber();
+            System.out.println("got daemon number: " + daemonNumber);
+            return DaemonInterface.connectToDaemon(DaemonInterface.DEFAULT_IP, DaemonInterface.RMI_REGISTRY_PORT, daemonNumber);
         } catch (RemoteException e) {
             System.out.printf("RemoteException while connecting to daemon, %s%n", e);
         } catch (NotBoundException e) {

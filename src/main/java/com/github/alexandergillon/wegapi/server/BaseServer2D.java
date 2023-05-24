@@ -1,8 +1,6 @@
 package com.github.alexandergillon.wegapi.server;
 
-import com.github.alexandergillon.wegapi.game.GameServerInterface2D;
-import com.github.alexandergillon.wegapi.game.PlayerInterface;
-import com.github.alexandergillon.wegapi.game.PlayerInterface2D;
+import com.github.alexandergillon.wegapi.game.*;
 
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -117,8 +115,8 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
          * @return the converted tile, relative to the size of the BaseServer2D which created this
          *         PlayerInterfaceWrapper
          */
-        private PlayerInterface.Tile tile2Dto1D(Tile2D tile) {
-            return new PlayerInterface.Tile(parent.coordsToIndex(tile.getRow(), tile.getCol()),
+        private Tile tile2Dto1D(Tile2D tile) {
+            return new Tile(parent.coordsToIndex(tile.getRow(), tile.getCol()),
                     tile.getIconName(), tile.getTileName());
         }
 
@@ -130,8 +128,8 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
          * @return the converted tiles, relative to the size of the BaseServer2D which created this
          *         PlayerInterfaceWrapper
          */
-        private ArrayList<PlayerInterface.Tile> tiles2Dto1D(ArrayList<Tile2D> tiles) {
-            ArrayList<PlayerInterface.Tile> tiles1D = new ArrayList<>(tiles.size());
+        private ArrayList<Tile> tiles2Dto1D(ArrayList<Tile2D> tiles) {
+            ArrayList<Tile> tiles1D = new ArrayList<>(tiles.size());
             for (Tile2D tile : tiles) {
                 tiles1D.add(tile2Dto1D(tile));
             }
@@ -186,8 +184,8 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
      * @param index the index to convert
      * @return coordinates corresponding to the tile with that index
      */
-    private PlayerInterface2D.TileCoordinate indexToCoords(int index) {
-        return new PlayerInterface2D.TileCoordinate(index / numCols, index % numCols);
+    private TileCoordinate indexToCoords(int index) {
+        return new TileCoordinate(index / numCols, index % numCols);
     }
 
     /**
@@ -207,7 +205,7 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
      */
     @Override
     public final void tileClicked(int tileIndex, PlayerData playerData) throws RemoteException {
-        PlayerInterface2D.TileCoordinate coords = indexToCoords(tileIndex);
+        TileCoordinate coords = indexToCoords(tileIndex);
         PlayerData2D playerData2D = PlayerInterfaceWrapper.createPlayerDataWrapper(playerData, this);
         tileClicked2D(coords.getRow(), coords.getCol(), playerData2D);
     }
@@ -219,8 +217,8 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
      */
     @Override
     public final void tileDragged(int fromTileIndex, int toTileIndex, PlayerData playerData) throws RemoteException {
-        PlayerInterface2D.TileCoordinate fromCoords = indexToCoords(fromTileIndex);
-        PlayerInterface2D.TileCoordinate toCoords = indexToCoords(toTileIndex);
+        TileCoordinate fromCoords = indexToCoords(fromTileIndex);
+        TileCoordinate toCoords = indexToCoords(toTileIndex);
         PlayerData2D playerData2D = PlayerInterfaceWrapper.createPlayerDataWrapper(playerData, this);
         tileDragged2D(fromCoords.getRow(), fromCoords.getCol(), toCoords.getRow(), toCoords.getCol(), playerData2D);
     }

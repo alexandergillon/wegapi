@@ -1,8 +1,6 @@
 package com.github.alexandergillon.wegapi.client;
 
-import com.github.alexandergillon.wegapi.game.DaemonInterface;
-import com.github.alexandergillon.wegapi.game.GameServerInterface;
-import com.github.alexandergillon.wegapi.game.PlayerInterface;
+import com.github.alexandergillon.wegapi.game.*;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -10,12 +8,14 @@ import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.AlreadyBoundException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.ReentrantLock;
 
 // todo: if lock is held, abort action
@@ -51,7 +51,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * todo: concurrency control and options for servers to set it
  */
 public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface, PlayerInterface {
-    private static final String GAME_DATA_DIR_NAME = ".gamedata";
     private static final String PLAYER_DATA_FILENAME = "playerdata.wegapi";
     private static final String PLAYER_DATA_MAGIC = "WEGAPIPLAYERDATA";
 
@@ -108,7 +107,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileClicked(int tile) {
         System.out.printf("daemon: tile clicked: %d%n", tile);
         try {
-            server.tileClicked(tile, new GameServerInterface.PlayerData(playerNumber, this));
+            server.tileClicked(tile, new PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileClicked to server, %s%n", e);
         }
@@ -127,29 +126,9 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
     public void tileDragged(int fromTile, int toTile) {
         System.out.printf("daemon: tile dragged: from %d to %d%n", fromTile, toTile);
         try {
-            server.tileDragged(fromTile, toTile, new GameServerInterface.PlayerData(playerNumber, this));
+            server.tileDragged(fromTile, toTile, new PlayerData(playerNumber, this));
         } catch (RemoteException e) {
             System.out.printf("RemoteException while forwarding tileDragged to server, %s%n", e);
-        }
-    }
-
-    /**
-     * Checks whether a path exists, and optionally whether it is a directory. If either check fails, prints an
-     * error message and aborts.
-     *
-     * @param path path to check whether it exists
-     * @param checkIsDir whether to check if the path is also a directory
-     */
-    private void checkExists(Path path, boolean checkIsDir) {
-        File file = new File(path.toString());
-        if (!file.exists()) {
-            System.out.println(path + " does not exist, aborting.");
-            System.exit(1);
-        }
-
-        if (checkIsDir && !file.isDirectory()) {
-            System.out.println(path + " is not a directory, aborting.");
-            System.exit(1);
         }
     }
 
@@ -159,7 +138,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         this.playerNumber = playerNumber;
 
         Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
-        checkExists(gameDataDirPath, true);
+        Util.checkExists(gameDataDirPath, true);
         Path playerDataPath = gameDataDirPath.resolve(PLAYER_DATA_FILENAME);
         File playerData = new File(playerDataPath.toString());
 
@@ -226,7 +205,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         // todo: use installed binaries in program files
         // todo: concurrency
         Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
-        checkExists(gameDataDirPath, true);
+        Util.checkExists(gameDataDirPath, true);
 
         ArrayList<String> stringifiedTiles = new ArrayList<>();
         for (Tile tile : tiles) {
@@ -292,7 +271,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         // todo: handle null tileindices
         System.out.println("daemon: deleting tiles...");
         Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
-        checkExists(gameDataDirPath, true);
+        Util.checkExists(gameDataDirPath, true);
 
         // tileIndices converted to strings
         String[] indexStrings = tileIndices.stream().map(x -> Integer.toString(x)).toArray(String[]::new);
@@ -373,6 +352,45 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         return null;
     }
 
+    private static int getDaemonNumber() {
+        while (true) {
+            int numberToTry = ThreadLocalRandom.current().nextInt(0, Integer.MAX_VALUE);
+            String url = Util.buildDaemonRMIPath(numberToTry);
+            try {
+                Naming.lookup(url);
+            } catch (NotBoundException expected) {
+                // this url is not in use: we can use it
+                return numberToTry;
+            } catch (RemoteException e) {
+                System.out.printf("RemoteException while looking for daemon url, %s%n", e);
+            } catch (MalformedURLException e) {
+                System.out.printf("Malformed URL while looking for daemon url, %s%n", e);
+            }
+        }
+    }
+
+    private void writeDaemonNumber(int daemonNumber) {
+        System.out.println("writing daemon number: " + daemonNumber);
+        Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
+        Util.checkExists(gameDataDirPath, true);
+        Path daemonNumberPath = gameDataDirPath.resolve(DAEMON_NUMBER_FILENAME);
+        File daemonNumberFile = new File(daemonNumberPath.toString());
+
+        try (FileOutputStream daemonNumberStream = new FileOutputStream(daemonNumberFile)) {
+            byte[] magic = DAEMON_NUMBER_MAGIC.getBytes(StandardCharsets.US_ASCII);
+            daemonNumberStream.write(magic);
+
+            DataOutputStream dataOutputStream = new DataOutputStream(daemonNumberStream);
+            dataOutputStream.writeInt(daemonNumber);
+        } catch (FileNotFoundException e) {
+            System.out.printf("daemonnumber file could not be created, %s%n", e);
+            System.exit(1);
+        } catch (IOException e) {
+            System.out.printf("IOException while writing/closing daemonnumber, %s%n", e);
+            System.exit(1);
+        }
+    }
+
     /**
      * Main function. Parses command-line arguments and launches a daemon RMI service
      * running in the directory specified by the user.
@@ -391,19 +409,24 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
         try {
             LocateRegistry.createRegistry(DaemonInterface.RMI_REGISTRY_PORT);
         } catch (RemoteException ignore) {
-            // RMI server already exists
+            // RMI registry already exists
         }
 
         try {
-            Naming.rebind("//" + DaemonInterface.DEFAULT_IP + ":" + DaemonInterface.RMI_REGISTRY_PORT + "/" + DaemonInterface.DEFAULT_DAEMON_PATH, daemon);
+            int daemonNumber = getDaemonNumber();
+            daemon.writeDaemonNumber(daemonNumber);
+            Naming.bind(Util.buildDaemonRMIPath(daemonNumber), daemon);
         } catch (RemoteException e) {
-            System.out.printf("Failed to rebind daemon, %s%n", e);
+            System.out.printf("Failed to bind daemon, %s%n", e);
             System.exit(1);
         } catch (MalformedURLException e) {
             System.out.printf("Malformed URL: %s%n", e);
             System.exit(1);
+        } catch (AlreadyBoundException e) {
+            System.out.printf("Daemon URL already bound: %s%n", e);
+            System.exit(1);
         }
-        System.out.println("Daemon ready!");
         daemon.registerWithServer();
+        System.out.println("Daemon ready!");
     }
 }
