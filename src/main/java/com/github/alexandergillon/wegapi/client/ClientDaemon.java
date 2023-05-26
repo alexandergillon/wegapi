@@ -201,6 +201,8 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
     @Override
     public void createTiles(ArrayList<Tile> tiles, CreateTilesMode mode) {
+        if (tiles == null || tiles.size() == 0) return;
+
         System.out.println("daemon: creating tiles...");
         // todo: use installed binaries in program files
         // todo: concurrency
@@ -268,7 +270,7 @@ public class ClientDaemon extends UnicastRemoteObject implements DaemonInterface
 
     @Override
     public void deleteTiles(ArrayList<Integer> tileIndices, DeleteTilesMode mode) {
-        // todo: handle null tileindices
+        if (mode != DeleteTilesMode.DELETE_ALL && (tileIndices == null || tileIndices.size() == 0)) return;
         System.out.println("daemon: deleting tiles...");
         Path gameDataDirPath = gameDir.resolve(GAME_DATA_DIR_NAME);
         Util.checkExists(gameDataDirPath, true);

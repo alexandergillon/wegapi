@@ -1,10 +1,12 @@
 package com.github.alexandergillon.wegapi.game;
 
+import java.util.Objects;
+
 /**
  * Class that encapsulates information about a tile in a player's game directory. Used for creating new
  * tiles/updating old ones in a player's game directory. 2D version of PlayerInterface::Tile.
  */
-public class Tile2D {
+public final class Tile2D {
     private final int row;
     private final int col;
     private final String iconName;
@@ -80,5 +82,19 @@ public class Tile2D {
 
     public String getTileName() {
         return tileName;
+    }
+
+    /** Tiles compare as equal if they have the same coordinates, icon and name. */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Tile2D other = (Tile2D) obj;
+        return row == other.row && col == other.col && iconName.equals(other.iconName) && Objects.equals(tileName, other.tileName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(row, col, iconName, tileName);
     }
 }

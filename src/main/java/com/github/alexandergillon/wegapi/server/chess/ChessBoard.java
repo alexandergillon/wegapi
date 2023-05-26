@@ -1,9 +1,12 @@
 package com.github.alexandergillon.wegapi.server.chess;
 
+import com.github.alexandergillon.wegapi.game.Tile;
 import com.github.alexandergillon.wegapi.game.Tile2D;
 import com.github.alexandergillon.wegapi.game.TileCoordinate;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Class that represents a chess board.
@@ -746,10 +749,74 @@ class ChessBoard {
      * @return a Tile2D which represents the chess piece at those coordinates, appropriate for which side of the board
      *         the player is on
      */
-     Tile2D pieceToTile(int row, int col, ChessPiece.PlayerColor viewingPlayer,
-                        HighlightMode highlightMode) {
-         return pieceToTile(row, col, board[row][col], viewingPlayer, highlightMode);
-     }
+    Tile2D pieceToTile(int row, int col, ChessPiece.PlayerColor viewingPlayer,
+                    HighlightMode highlightMode) {
+        return pieceToTile(row, col, board[row][col], viewingPlayer, highlightMode);
+    }
+
+    /**
+     * Get a player's highlighted tiles, as Tile2Ds.
+     *
+     * @param player the player, whose highlighted tiles to get
+     * @return the highlighted tiles of that player
+     */
+    private ArrayList<Tile2D> getHighlightedTiles(ChessServer.ChessPlayerData player) {
+        if (!player.hasHighlightedTile()) return new ArrayList<>();
+        int row = player.getHighlightedTile().getRow();  // tile of the player's highlighted piece
+        int col = player.getHighlightedTile().getCol();  // tile of
+
+        ChessPiece.PlayerColor playerColor = player.getPlayerColor();
+        boolean isFriendly = playerColor == board[row][col].getPlayerColor();
+
+        ChessBoard.HighlightMode brightHighlight = isFriendly ? ChessBoard.HighlightMode.FRIENDLY_BRIGHT
+                : ChessBoard.HighlightMode.ENEMY_BRIGHT;
+        ChessBoard.HighlightMode normalHighlight = isFriendly ? ChessBoard.HighlightMode.FRIENDLY_NORMAL
+                : ChessBoard.HighlightMode.ENEMY_NORMAL;
+
+        ArrayList<Tile2D> tiles = new ArrayList<>();
+        tiles.add(pieceToTile(row, col, playerColor, brightHighlight));
+
+        ArrayList<TileCoordinate> possibleMoves = getPossibleMoves(row, col);
+        for (TileCoordinate move : possibleMoves) {
+            tiles.add(pieceToTile(move.getRow(), move.getCol(), playerColor, normalHighlight));
+        }
+
+        return tiles;
+    }
+
+    /**
+     * Converts the current state of the chess board to a map from tile coordinates to Tile2Ds representing that tile.
+     * This method needs the player color of who this tile will be shown to, as the resulting Tile2D's
+     * position depends on which side of the board the player is on. I.e. because the two players see the board
+     * differently, we need to know who is going to see this tile.
+     *
+     * @param viewingPlayer the player data of who this tile will be shown to
+     * @return a mapping from coordinates to Tile2Ds, representing the board from that player's perspective
+     */
+    HashMap<TileCoordinate, Tile2D> getCoordinatesToTiles(ChessServer.ChessPlayerData viewingPlayer) {
+        HashMap<TileCoordinate, Tile2D> coordinatesToTiles = new HashMap<>();
+
+        // first, add the highlighted tiles
+        ArrayList<Tile2D> highlightedTiles = getHighlightedTiles(viewingPlayer);
+        for (Tile2D tile : highlightedTiles) {
+            coordinatesToTiles.put(new TileCoordinate(tile.getRow(), tile.getCol()), tile);
+        }
+
+        // then, add all other tiles
+        for (int row = 0; row < NUM_ROWS; row++) {
+            for (int col = 0; col < NUM_COLS; col++) {
+                Tile2D tile = pieceToTile(row, col, viewingPlayer.getPlayerColor(), HighlightMode.NONE);
+                // important to use tile.getRow/getCol as they may be different from row/col
+                // this is why we create the tile first, as it allows us to avoid player color conversions here
+                // with the small overhead of creating some tiles that may be thrown away
+                if (!coordinatesToTiles.containsKey(new TileCoordinate(tile.getRow(), tile.getCol()))) {
+                    coordinatesToTiles.put(new TileCoordinate(tile.getRow(), tile.getCol()), tile);
+                }
+            }
+        }
+
+        return coordinatesToTiles;
+    }
 
     /**
      * Converts the current state of the chess board to a Tile2D representation, which can be sent to a client for
@@ -757,17 +824,14 @@ class ChessBoard {
      * position depends on which side of the board the player is on. I.e. because the two players see the board
      * differently, we need to know who is going to see this tile.
      *
-     * @param viewingPlayerData the player data of who this tile will be shown to
+     * @param viewingPlayer the player data of who this tile will be shown to
      * @return an array of Tile2Ds that can be sent to a player, and will display the current state of the board
      */
-    ArrayList<Tile2D> toTiles(ChessServer.ChessPlayerData viewingPlayerData) {
-        ArrayList<Tile2D> tiles = new ArrayList<>();
-        for (int rowIndex = 0; rowIndex < NUM_ROWS; rowIndex++) {
-            for (int colIndex = 0; colIndex < NUM_COLS; colIndex++) {
-                tiles.add(pieceToTile(rowIndex, colIndex, board[rowIndex][colIndex], viewingPlayerData.getPlayerColor(),
-                        HighlightMode.NONE));  // todo: change
-            }
-        }
-        return tiles;
+    ArrayList<Tile2D> toTiles(ChessServer.ChessPlayerData viewingPlayer) {
+        return new ArrayList<>(getCoordinatesToTiles(viewingPlayer).values());
     }
+
+
+
+
 }

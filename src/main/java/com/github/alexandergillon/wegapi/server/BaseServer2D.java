@@ -4,6 +4,7 @@ import com.github.alexandergillon.wegapi.game.*;
 
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * A base 2D server, designed to be subclassed to make a 2D game with WEGAPI. <br> <br>
@@ -164,6 +165,23 @@ public abstract class BaseServer2D extends BaseServer implements GameServerInter
         @Override
         public void gameOver(boolean win) throws RemoteException {
             player.gameOver(win);
+        }
+
+        /** We want testing for equality of PlayerInterfaceWrappers to return true when they wrap the same underlying
+         * player remote object. */
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+
+            PlayerInterfaceWrapper other = (PlayerInterfaceWrapper) obj;
+            return player.equals(other.player);
+        }
+
+        /** Overridden to keep in line with overridden equals. */
+        @Override
+        public int hashCode() {
+            return Objects.hash(player);
         }
     }
 

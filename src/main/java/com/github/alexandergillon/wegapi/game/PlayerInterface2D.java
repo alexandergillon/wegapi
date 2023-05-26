@@ -12,7 +12,26 @@ import java.util.ArrayList;
  *
  * For developers of WEGAPI itself: see BaseServer2D.java for how this interface fits into the WEGAPI model. This
  * interface is actually a wrapper on underlying (1D) functions via the PlayerInterface, and so this interface
- * is not used directly for RMI communication.
+ * is not used directly for RMI communication. <br> <br>
+ *
+ * A note on equality of PlayerInterface2Ds (this applies to the .equals() method, not to ==): <br> <ul>
+ *  PlayerInterface2Ds should compare equal when they correspond to the same underlying player remote object. In
+ *  the context of WEGAPI, this means when the same client daemon program provided them (i.e. the same player,
+ *  and their daemon has never restarted). <br> <br>
+ * 
+ *  To elaborate further, this means that if the very same daemon (i.e. the same process) calls GameServerInterface2D
+ *  functions, then their PlayerData2D.getPlayer() results will compare as equal (also including the
+ *  PlayerInterface2D they provided in GameServerInterface2D.registerPlayer2D()). However, if a daemon from the
+ *  same player were to crash and be restarted, their PlayerInterface2D.getPlayer() would not compare as equal to
+ *  any PlayerInterface2Ds or PlayerData2D.getPlayer() supplied before the crash. And certainly PlayerInterface2Ds
+ *  from different players will not compare as equal. <br> <br>
+ * 
+ *  This level of equality ensures that calling a PlayerInterface2D method on either one of the objects that compare
+ *  equal will have the same results: i.e. that the command gets though to the same player (and the same daemon
+ *  being run by that player). <br> <br>
+ * 
+ *  This behavior is implemented by the default implementation of a PlayerInterface2D, in
+ *  BaseServer2D::PlayerInterfaceWrapper. </ul>
  */
 public interface PlayerInterface2D {
 

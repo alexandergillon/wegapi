@@ -14,7 +14,26 @@ import java.util.ArrayList;
  * to 'do'. <br> <br>
  *
  * For developers of WEGAPI itself: see ClientDaemon.java for more information about how communication works, and
- * what the daemon achieves. This interface is used by the server to contact a client's daemon.
+ * what the daemon achieves. This interface is used by the server to contact a client's daemon. <br> <br>
+ * 
+ * A note on equality of PlayerInterfaces (this applies to the .equals() method, not to ==): <br> <ul>
+ *   PlayerInterfaces should compare equal when they correspond to the same underlying player remote object. In
+ *   the context of WEGAPI, this means when the same client daemon program provided them (i.e. the same player,
+ *   and their daemon has never restarted). <br> <br>
+ *  
+ *   To elaborate further, this means that if the very same daemon (i.e. the same process) calls GameServerInterface
+ *   functions, then their PlayerData.getPlayer() results will compare as equal (also including the
+ *   PlayerInterface they provided in GameServerInterface.registerPlayer()). However, if a daemon from the
+ *   same player were to crash and be restarted, their PlayerInterface.getPlayer() would not compare as equal to
+ *   any PlayerInterfaces or PlayerData.getPlayer() supplied before the crash. And certainly PlayerInterfaces
+ *   from different players will not compare as equal. <br> <br>
+ *  
+ *   This level of equality ensures that calling a PlayerInterface method on either one of the objects that compare
+ *   equal will have the same results: i.e. that the command gets though to the same player (and the same daemon
+ *   being run by that player). <br> <br>
+ *  
+ *   This behavior is the default behavior of objects that extend UnicastRemoteObject. ClientDaemon is the only
+ *   implementer of this interface, and extends UnicastRemoteObject, so complies with this desired behavior. </ul>
  */
 public interface PlayerInterface extends Remote {
 
