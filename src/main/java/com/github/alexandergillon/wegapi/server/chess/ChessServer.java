@@ -148,7 +148,6 @@ public class ChessServer extends BaseServer2D {
         try {
             if (currentPlayer != movingPlayer.getPlayerColor()) {
                 movingPlayer.getPlayer().displayMessage("Not your turn.", true);
-                movingPlayer.setSelectedTile(null);
             } else {
                 if (chessBoard.tryMove(fromRow, fromCol, toRow, toCol)) {
                     movingPlayer.setSelectedTile(null);
@@ -158,7 +157,6 @@ public class ChessServer extends BaseServer2D {
                     else currentPlayer = ChessPiece.PlayerColor.WHITE;
                 } else {
                     movingPlayer.getPlayer().displayMessage("Illegal move: leaves king in check.", true);
-                    movingPlayer.setSelectedTile(null);
                 }
             }
         } catch (RemoteException e) {
@@ -278,25 +276,44 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
+    /**
+     * Enforces that when a player takes an action (a click or a drag), that the other player is connected to the game.
+     * Furthermore, that the remote object that that player provided in their PlayerData2D corresponds with the remote
+     * object they initially supplied when they called registerPlayer2D()
+     *
+     * @param actionPlayerData the player data of the player who took an action
+     * @param actionPlayer the chess player data of the player who took an action
+     * @param otherPlayer the chess player data of the other player
+     * @return whether the game state passes the checks described above
+     */
+    private boolean checkPlayers(PlayerData2D actionPlayerData, ChessPlayerData actionPlayer, ChessPlayerData otherPlayer) {
+        if (otherPlayer == null) {
+            try {
+                actionPlayer.getPlayer().displayMessage("The other player has not yet joined.", true);
+                return false;
+            } catch (RemoteException e) {
+                System.out.println("RemoteException in tileClicked2D(): " + e);
+                return false;  // todo: change when handling disconnects
+            }
+        }
+
+        // make sure the remote object we have on file corresponds, as this is what we use to update the player
+        if (!actionPlayerData.getPlayer().equals(actionPlayer.getPlayer())) {
+            System.out.println("Player remote objects do not agree, exiting.");
+            System.exit(1);
+            return false;  // not used for now, but if we later want this to not exit, this should probably return false
+        }
+
+        return true;
+    }
+
     /** Processes a player's click. Selects/deselects/moves pieces appropriately. */
     @Override
     public void tileClicked2D(int row, int col, PlayerData2D clickingPlayerData) {
         ChessPlayerData clickingPlayer = players.get(clickingPlayerData.getPlayerNumber());
         ChessPlayerData otherPlayer = players.get(1 - clickingPlayerData.getPlayerNumber());
-        if (otherPlayer == null) {
-            try {
-                clickingPlayer.getPlayer().displayMessage("The other player has not yet joined.", true);
-                return;
-            } catch (RemoteException e) {
-                System.out.println("RemoteException in tileClicked2D(): " + e);
-            }
-        }
 
-        // make sure the remote object we have on file corresponds, as this is what we use to update the player
-        if (!clickingPlayerData.getPlayer().equals(clickingPlayer.getPlayer())) {
-            System.out.println("Player remote objects do not agree, exiting.");
-            System.exit(1);
-        }
+         if (!checkPlayers(clickingPlayerData, clickingPlayer, otherPlayer)) return;
 
         HashMap<TileCoordinate, Tile2D> beforeTilesClickingPlayer = chessBoard.getCoordinatesToTiles(clickingPlayer);
         HashMap<TileCoordinate, Tile2D> beforeTilesOtherPlayer = chessBoard.getCoordinatesToTiles(otherPlayer);
@@ -323,9 +340,40 @@ public class ChessServer extends BaseServer2D {
         System.out.println("player #" + clickingPlayerData.getPlayerNumber() + "(" + clickingPlayer.getPlayerColor() + ") clicked on (" + row + ", " + col + ")");
     }
 
+    /** Processes a player's drag. Moves pieces appropriately. */
     @Override
-    public void tileDragged2D(int fromRow, int fromCol, int toRow, int toCol, PlayerData2D playerData) {
-        System.out.println("player #" + playerData.getPlayerNumber() + " dragged (" + fromRow + ", " + fromCol + ") to (" + toRow + ", " + toCol + ")");
+    public void tileDragged2D(int fromRow, int fromCol, int toRow, int toCol, PlayerData2D draggingPlayerData) {
+        ChessPlayerData draggingPlayer = players.get(draggingPlayerData.getPlayerNumber());
+        ChessPlayerData otherPlayer = players.get(1 - draggingPlayerData.getPlayerNumber());
+
+        if (!checkPlayers(draggingPlayerData, draggingPlayer, otherPlayer)) return;
+
+        HashMap<TileCoordinate, Tile2D> beforeTilesClickingPlayer = chessBoard.getCoordinatesToTiles(draggingPlayer);
+        HashMap<TileCoordinate, Tile2D> beforeTilesOtherPlayer = chessBoard.getCoordinatesToTiles(otherPlayer);
+
+        // black sees the board 180 degrees rotated
+        if (draggingPlayer.getPlayerColor() == ChessPiece.PlayerColor.BLACK) {
+            fromRow = (ChessBoard.NUM_ROWS-1) - fromRow;
+            fromCol = (ChessBoard.NUM_COLS-1) - fromCol;
+            toRow = (ChessBoard.NUM_ROWS-1) - toRow;
+            toCol = (ChessBoard.NUM_COLS-1) - toCol;
+        }
+
+        if (draggingPlayer.hasSelectedTile()) {
+            draggingPlayer.setSelectedTile(null);
+        }
+
+        if (chessBoard.canMove(fromRow, fromCol, toRow, toCol)) {
+            tryMove(fromRow, fromCol, toRow, toCol, draggingPlayer);
+        }
+
+        HashMap<TileCoordinate, Tile2D> afterTilesClickingPlayer = chessBoard.getCoordinatesToTiles(draggingPlayer);
+        HashMap<TileCoordinate, Tile2D> afterTilesOtherPlayer = chessBoard.getCoordinatesToTiles(otherPlayer);
+
+        redrawPlayer(draggingPlayer, beforeTilesClickingPlayer, afterTilesClickingPlayer);
+        redrawPlayer(otherPlayer, beforeTilesOtherPlayer, afterTilesOtherPlayer);
+
+        System.out.println("player #" + draggingPlayerData.getPlayerNumber() + " dragged (" + fromRow + ", " + fromCol + ") to (" + toRow + ", " + toCol + ")");
     }
 
     /**
