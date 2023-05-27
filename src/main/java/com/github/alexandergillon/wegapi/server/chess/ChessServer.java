@@ -22,7 +22,7 @@ public class ChessServer extends BaseServer2D {
         private PlayerInterface2D player;  // shouldn't change, but maybe in the future, on disconnect
         private final ChessPiece.PlayerColor playerColor;
 
-        private TileCoordinate highlightedTile = null;  // todo: rename to selected
+        private TileCoordinate selectedTile = null;  // todo: rename to selected
 
         public ChessPlayerData(int playerNumber, PlayerInterface2D player, ChessPiece.PlayerColor playerColor) {
             this.playerNumber = playerNumber;
@@ -46,26 +46,26 @@ public class ChessServer extends BaseServer2D {
             return playerColor;
         }
 
-        public boolean hasHighlightedTile() {
-            return highlightedTile != null;
+        public boolean hasSelectedTile() {
+            return selectedTile != null;
         }
 
-        public TileCoordinate getHighlightedTile() {
-            return highlightedTile;
+        public TileCoordinate getSelectedTile() {
+            return selectedTile;
         }
 
-        public void setHighlightedTile(TileCoordinate highlightedTile) {
-            this.highlightedTile = highlightedTile;
+        public void setSelectedTile(TileCoordinate selectedTile) {
+            this.selectedTile = selectedTile;
         }
 
         @Override
         public String toString() {
-            return highlightedTile == null ? String.format("ChessPlayerData(player #%d, %s, with nothing selected)", playerNumber, playerColor)
-            : String.format("ChessPlayerData(player #%d, %s, with (%d, %d) selected", playerNumber, playerColor, highlightedTile.getRow(), highlightedTile.getCol());
+            return selectedTile == null ? String.format("ChessPlayerData(player #%d, %s, with nothing selected)", playerNumber, playerColor)
+            : String.format("ChessPlayerData(player #%d, %s, with (%d, %d) selected", playerNumber, playerColor, selectedTile.getRow(), selectedTile.getCol());
         }
     }
 
-    private final HashMap<Integer, ChessPlayerData> players = new HashMap<>(); // maps player number to their data
+    private final HashMap<Integer, ChessPlayerData> players = new HashMap<>(); // maps player number to chess-specific data
     private final AtomicInteger playerNumber = new AtomicInteger();
     private final ChessBoard chessBoard;
     private ChessPiece.PlayerColor currentPlayer = ChessPiece.PlayerColor.WHITE;
@@ -90,6 +90,7 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
+    /** Registers the player. Players are shown the default setup of chess, and the game can begin. */
     @Override
     public void registerPlayer2D(PlayerInterface2D player) {
         int thisPlayerNumber = playerNumber.getAndUpdate(x -> 1-x);
@@ -106,46 +107,58 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
-    private void deselectAndSelectOther(int row, int col, ChessPlayerData clickingPlayer, ChessPiece clickedPiece) {
-        System.out.println("deselectAndSelectOther()");
-
-        if (clickedPiece == null) {
-            clickingPlayer.setHighlightedTile(null);
-        } else {
-            clickingPlayer.setHighlightedTile(new TileCoordinate(row, col));
-        }
-    }
-
+    /**
+     * Updates the other player when a player successfully made a move. This means checking whether the move interfered
+     * with what the other player currently had selected, and if so, deselecting the other player's piece. For example,
+     * the other player may have a piece selected that was captured in the move that just occurred. Then we need to
+     * deselect the other player's piece as this piece no longer exists.
+     *
+     * @param fromRow the row that was moved from
+     * @param fromCol the column that was moved from
+     * @param toRow the row that was moved to
+     * @param toCol the column that was moved to
+     * @param movingPlayer the player who moved
+     */
     private void updateOtherPlayer(int fromRow, int fromCol, int toRow, int toCol, ChessPlayerData movingPlayer) {
         ChessPlayerData otherPlayer = players.get(1 - movingPlayer.getPlayerNumber());
-        if (!otherPlayer.hasHighlightedTile()) return;
+        if (!otherPlayer.hasSelectedTile()) return;
 
-        int highlightedRow = otherPlayer.getHighlightedTile().getRow();
-        int highlightedCol = otherPlayer.getHighlightedTile().getCol();
+        int selectedRow = otherPlayer.getSelectedTile().getRow();
+        int selectedCol = otherPlayer.getSelectedTile().getCol();
 
-        if (highlightedRow == fromRow && highlightedCol == fromCol) {
-            otherPlayer.setHighlightedTile(null);
-        } else if (highlightedRow == toRow && highlightedCol == toCol) {
-            otherPlayer.setHighlightedTile(null);
+        if (selectedRow == fromRow && selectedCol == fromCol) {
+            otherPlayer.setSelectedTile(null);
+        } else if (selectedRow == toRow && selectedCol == toCol) {
+            otherPlayer.setSelectedTile(null);
         }
     }
 
+    /**
+     * Attempts to make a move. This move must be legal, except for possibly leaving the king in check. If this move
+     * does in fact leave the king in check (and is hence actually an illegal move), the move fails, and the player is
+     * notified. Otherwise, the move succeeds, and the visuals of both players are updated accordingly.
+     *
+     * @param fromRow the row of the piece to move
+     * @param fromCol the column of the piece to move
+     * @param toRow the row of where to move to
+     * @param toCol the column of where to move to
+     * @param movingPlayer the player who made the move
+     */
     private void tryMove(int fromRow, int fromCol, int toRow, int toCol, ChessPlayerData movingPlayer) {
-        System.out.println("tryMove()");
         try {
             if (currentPlayer != movingPlayer.getPlayerColor()) {
                 movingPlayer.getPlayer().displayMessage("Not your turn.", true);
-                movingPlayer.setHighlightedTile(null);
+                movingPlayer.setSelectedTile(null);
             } else {
                 if (chessBoard.tryMove(fromRow, fromCol, toRow, toCol)) {
-                    movingPlayer.setHighlightedTile(null);
+                    movingPlayer.setSelectedTile(null);
                     updateOtherPlayer(fromRow, fromCol, toRow, toCol, movingPlayer);
 
                     if (currentPlayer == ChessPiece.PlayerColor.WHITE) currentPlayer = ChessPiece.PlayerColor.BLACK;
                     else currentPlayer = ChessPiece.PlayerColor.WHITE;
                 } else {
                     movingPlayer.getPlayer().displayMessage("Illegal move: leaves king in check.", true);
-                    movingPlayer.setHighlightedTile(null);
+                    movingPlayer.setSelectedTile(null);
                 }
             }
         } catch (RemoteException e) {
@@ -153,46 +166,88 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
-    private void tileClickedHasHighlighted(int row, int col, TileCoordinate highlightedTile, ChessPlayerData clickingPlayer) {
-        System.out.println("tileClickedHasHighlighted()");
-        if (row == highlightedTile.getRow() && col == highlightedTile.getCol()) {
-            // clicked their highlighted tile: unhighlight
+    /**
+     * This function is called when a player has clicked a tile when they have a piece selected. It updates the game
+     * state based on where the player clicked. <br> <br>
+     *
+     * If they clicked their selected piece, it deselects that piece. If they clicked a tile that their selected piece
+     * might be able to move to, it tries to make that move (this could fail if the move would leave their king in
+     * check). Otherwise, it deselects their currently selected piece (if they clicked an empty tile that their
+     * piece cannot move to), or selects a different piece (if they clicked another piece that their piece cannot
+     * move to).
+     *
+     * @param row the row that the player clicked
+     * @param col the column that the player clicked
+     * @param selectedTile the player's selected tile coordinates
+     * @param clickingPlayer the player who made the click
+     */
+    private void tileClickedHasSelected(int row, int col, TileCoordinate selectedTile, ChessPlayerData clickingPlayer) {
+        if (row == selectedTile.getRow() && col == selectedTile.getCol()) {
+            // clicked their selected tile: deselect
             System.out.println("player deselcted");
-            clickingPlayer.setHighlightedTile(null);
+            clickingPlayer.setSelectedTile(null);
         } else {
             // clicked another tile
             ChessPiece clickedPiece = chessBoard.pieceAt(row, col);
-            ChessPiece highlightedPiece = chessBoard.pieceAt(highlightedTile.getRow(), highlightedTile.getCol());
+            ChessPiece selectedPiece = chessBoard.pieceAt(selectedTile.getRow(), selectedTile.getCol());
 
-            if (clickingPlayer.getPlayerColor() != highlightedPiece.getPlayerColor()) {
-                // clicked another tile, and their highlighted piece is an enemy piece. unhighlight the piece,
-                // and perhaps highlight another
-                deselectAndSelectOther(row, col, clickingPlayer, clickedPiece);
-            } else {
-                // clicked another tile, and their highlighted piece is friendly. check if they are trying to make a move,
-                // or selecting another piece
-                if (chessBoard.canMove(highlightedTile.getRow(), highlightedTile.getCol(), row, col)) {
-                    // their highlighted piece can make the move. try to make it
-                    tryMove(highlightedTile.getRow(), highlightedTile.getCol(), row, col, clickingPlayer);
+            if (clickingPlayer.getPlayerColor() != selectedPiece.getPlayerColor()) {
+                // clicked another tile, and their selected piece is an enemy piece. deselect the piece,
+                // and perhaps select another
+                if (clickedPiece == null) {
+                    clickingPlayer.setSelectedTile(null);
                 } else {
-                    deselectAndSelectOther(row, col, clickingPlayer, clickedPiece);
+                    clickingPlayer.setSelectedTile(new TileCoordinate(row, col));
+                }
+            } else {
+                // clicked another tile, and their selected piece is friendly. check if they are trying to make a move,
+                // or selecting another piece
+                if (chessBoard.canMove(selectedTile.getRow(), selectedTile.getCol(), row, col)) {
+                    // their selected piece can make the move. try to make it
+                    tryMove(selectedTile.getRow(), selectedTile.getCol(), row, col, clickingPlayer);
+                } else {
+                    // not trying to make a move: deselect their piece and potentially select another
+                    if (clickedPiece == null) {
+                        clickingPlayer.setSelectedTile(null);
+                    } else {
+                        clickingPlayer.setSelectedTile(new TileCoordinate(row, col));
+                    }
                 }
             }
         }
     }
 
-    private void tileClickedNoHighlighted(int row, int col, ChessPlayerData chessPlayerData) {
-        System.out.println("tileClickedNoHighlighted()");
+    /**
+     * This function is called when a player has clicked a tile when they do not have a piece selected. It updates
+     * the game state based on where the player clicked. Essentially, if they clicked a piece, it is selected,
+     * and otherwise nothing happens.
+     *
+     * @param row the row that the player clicked
+     * @param col the column that the player clicked
+     * @param clickingPlayer the player who made the click
+     */
+    private void tileClickedNoSelected(int row, int col, ChessPlayerData clickingPlayer) {
         ChessPiece clickedPiece = chessBoard.pieceAt(row, col);
         if (clickedPiece == null) {
-            return; // no highlighted piece, and the player clicked an empty square
+            return; // no selected piece, and the player clicked an empty square
         } else {
-            chessPlayerData.setHighlightedTile(new TileCoordinate(row, col));
+            clickingPlayer.setSelectedTile(new TileCoordinate(row, col));
         }
     }
 
+    /**
+     * Redraws tiles for a player, based on what changed. This function takes the state of the game before some change,
+     * and the state after (both as lists of Tile2Ds). Then, any tiles that were present before and not afterwards are
+     * deleted, and any tiles that have changed icons are redrawn for the user. This therefore avoids redrawing the
+     * entire game for the user each time a change is made, which is faster and looks better.
+     *
+     * @param player the player whose game to redraw
+     * @param beforeTiles the state of the game before some change
+     * @param afterTiles the state of the game after some change
+     */
     private void redrawPlayer(ChessPlayerData player, HashMap<TileCoordinate, Tile2D> beforeTiles,
                               HashMap<TileCoordinate, Tile2D> afterTiles) {
+        // update ('create') any tiles whose icons changed
         ArrayList<Tile2D> tilesToCreate = new ArrayList<>();
         for (TileCoordinate coords : afterTiles.keySet()) {
             if (!beforeTiles.containsKey(coords)) {
@@ -206,6 +261,7 @@ public class ChessServer extends BaseServer2D {
             }
         }
 
+        // delete any tiles which were present before but not after
         HashSet<TileCoordinate> deletedCoordinates = new HashSet<>(beforeTiles.keySet());
         deletedCoordinates.removeAll(afterTiles.keySet());
         ArrayList<TileCoordinate> tilesToDelete = new ArrayList<>(deletedCoordinates);
@@ -222,10 +278,9 @@ public class ChessServer extends BaseServer2D {
         }
     }
 
+    /** Processes a player's click. Selects/deselects/moves pieces appropriately. */
     @Override
     public void tileClicked2D(int row, int col, PlayerData2D clickingPlayerData) {
-        System.out.println("tileClicked2D()");
-
         ChessPlayerData clickingPlayer = players.get(clickingPlayerData.getPlayerNumber());
         ChessPlayerData otherPlayer = players.get(1 - clickingPlayerData.getPlayerNumber());
         if (otherPlayer == null) {
@@ -237,6 +292,7 @@ public class ChessServer extends BaseServer2D {
             }
         }
 
+        // make sure the remote object we have on file corresponds, as this is what we use to update the player
         if (!clickingPlayerData.getPlayer().equals(clickingPlayer.getPlayer())) {
             System.out.println("Player remote objects do not agree, exiting.");
             System.exit(1);
@@ -251,10 +307,11 @@ public class ChessServer extends BaseServer2D {
             col = (ChessBoard.NUM_COLS-1) - col;
         }
 
-        if (clickingPlayer.hasHighlightedTile()) {
-            tileClickedHasHighlighted(row, col, clickingPlayer.getHighlightedTile(), clickingPlayer);
+        // process the click
+        if (clickingPlayer.hasSelectedTile()) {
+            tileClickedHasSelected(row, col, clickingPlayer.getSelectedTile(), clickingPlayer);
         } else {
-            tileClickedNoHighlighted(row, col, clickingPlayer);
+            tileClickedNoSelected(row, col, clickingPlayer);
         }
 
         HashMap<TileCoordinate, Tile2D> afterTilesClickingPlayer = chessBoard.getCoordinatesToTiles(clickingPlayer);

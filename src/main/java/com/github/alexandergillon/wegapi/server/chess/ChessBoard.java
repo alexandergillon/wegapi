@@ -1,10 +1,8 @@
 package com.github.alexandergillon.wegapi.server.chess;
 
-import com.github.alexandergillon.wegapi.game.Tile;
 import com.github.alexandergillon.wegapi.game.Tile2D;
 import com.github.alexandergillon.wegapi.game.TileCoordinate;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -358,7 +356,7 @@ class ChessBoard {
             case ROOK: return canMoveRook(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
             case KNIGHT: return canMoveKnight(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
             case BISHOP: return canMoveBishop(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
-            case QUEEN: return canMoveKnight(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor())
+            case QUEEN: return canMoveRook(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor())
                             || canMoveBishop(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
             case KING: return canMoveKing(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
             default: throw new AssertionError("Unrecognized chess piece type in ChessBoard.canMove()");
@@ -595,8 +593,14 @@ class ChessBoard {
        }
     }
 
+    /**
+     * Returns whether a player is in check.
+     *
+     * @param playerColor the player to check if in check
+     * @return whether that player is in check
+     */
     private boolean isInCheck(ChessPiece.PlayerColor playerColor) {
-        // not the most efficient, but reduces the number of data structures we need to maintain
+        // not the most efficient, but reduces the complexity of other code
         TileCoordinate kingPos = null;
         boolean kingFound = false;
         for (int row = 0; row < NUM_ROWS && !kingFound; row++) {
@@ -630,16 +634,27 @@ class ChessBoard {
      * @param toRow row to move to
      * @param toCol column to move to
      */
-    void move(int fromRow, int fromCol, int toRow, int toCol) {
+    private void move(int fromRow, int fromCol, int toRow, int toCol) {
         board[toRow][toCol] = board[fromRow][fromCol];
         board[fromRow][fromCol] = null;
     }
 
+    /**
+     * Attempts to make a move. This move must be legal, except for possibly leaving the king in check. If this move
+     * does in fact leave the king in check (and is hence actually an illegal move), the move fails, and this function
+     * returns false. Otherwise, the move succeeds, and this function returns true.
+     *
+     * @param fromRow the row of the piece to move
+     * @param fromCol the column of the piece to move
+     * @param toRow the row of where to move to
+     * @param toCol the column of where to move to
+     * @return whether the move succeeded
+     */
     boolean tryMove(int fromRow, int fromCol, int toRow, int toCol) {
         ChessPiece chessPiece = board[fromRow][fromCol];
         move(fromRow, fromCol, toRow, toCol);
         if (isInCheck(chessPiece.getPlayerColor())) {
-            move(toRow, toCol, fromRow, fromCol);
+            move(toRow, toCol, fromRow, fromCol);  // revert
             return false;
         } else {
             return true;
@@ -755,15 +770,16 @@ class ChessBoard {
     }
 
     /**
-     * Get a player's highlighted tiles, as Tile2Ds.
+     * Get a player's highlighted tiles, as Tile2Ds. These are tiles that appear highlighted to the player based
+     * on what piece they have selected, to indicate which moves they are able to make.
      *
      * @param player the player, whose highlighted tiles to get
      * @return the highlighted tiles of that player
      */
     private ArrayList<Tile2D> getHighlightedTiles(ChessServer.ChessPlayerData player) {
-        if (!player.hasHighlightedTile()) return new ArrayList<>();
-        int row = player.getHighlightedTile().getRow();  // tile of the player's highlighted piece
-        int col = player.getHighlightedTile().getCol();  // tile of
+        if (!player.hasSelectedTile()) return new ArrayList<>();
+        int row = player.getSelectedTile().getRow();  // row of the player's selected piece
+        int col = player.getSelectedTile().getCol();  // column of the player's selected piece
 
         ChessPiece.PlayerColor playerColor = player.getPlayerColor();
         boolean isFriendly = playerColor == board[row][col].getPlayerColor();
@@ -830,8 +846,4 @@ class ChessBoard {
     ArrayList<Tile2D> toTiles(ChessServer.ChessPlayerData viewingPlayer) {
         return new ArrayList<>(getCoordinatesToTiles(viewingPlayer).values());
     }
-
-
-
-
 }

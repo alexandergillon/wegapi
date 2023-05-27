@@ -93,6 +93,15 @@ public class Client {
         }
     }
 
+    /**
+     * Reads the daemon number from a file ([current directory]/GAME_DATA_DIR_NAME/DAEMON_NUMBER_FILENAME). This
+     * tells the client which daemon to connect to, as there may be more than one running on the machine. <br> <br>
+     *
+     * The format of this file is a magic string, found at DaemonInterface.DAEMON_NUMBER_MAGIC, followed by an integer
+     * (as raw binary, not ASCII), that was written by a DataOutputStream and can be read by a DataInputStream.
+     *
+     * @return The daemon number of the daemon watching over this game.
+     */
     private static int readDaemonNumber() {
         Path gameDataDirPath = Paths.get(".").toAbsolutePath().normalize().resolve(DaemonInterface.GAME_DATA_DIR_NAME);  // todo: pass path from c++
         Util.checkExists(gameDataDirPath, true);
