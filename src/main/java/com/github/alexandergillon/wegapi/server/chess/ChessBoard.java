@@ -5,6 +5,7 @@ import com.github.alexandergillon.wegapi.game.TileCoordinate;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Class that represents a chess board.
@@ -31,6 +32,11 @@ class ChessBoard {
             "WR WN WB WQ WK WB WN WR";
 
     private final ChessPiece[][] board;  // null entries mean no piece is present on that tile
+    /** At any turn during a game in chess, there can be at most 1 tile that is eligible to be moved to as part of an
+     * en passant move (i.e. the tile that was skipped over by a moving pawn). This instance variable keeps track of
+     * such a tile, for tracking whether an en passant move can be performed. */
+    private TileCoordinate enPassantTile = null;
+    private ChessPiece.PlayerColor enPassantColor = null;  // the player who could perform en passant, not who just moved
 
     /** Creates a new ChessBoard, which initializes itself to the starting setup of chess. */
     public ChessBoard() {
@@ -199,7 +205,11 @@ class ChessBoard {
             if (rowDiffAbs != 1) return false;  // pawns can only move exactly 1 space diagonal if moving out of column
 
             ChessPiece pieceAtMoveTarget = board[toRow][toCol];
-            if (pieceAtMoveTarget == null) return false; // todo: en passant
+            if (pieceAtMoveTarget == null) {
+                // check for en passant
+                return enPassantTile != null && toRow == enPassantTile.getRow() && toCol == enPassantTile.getCol()
+                        && thisPlayerColor == enPassantColor;
+            }
             // trying to capture a piece: check if it is an enemy one
             else return pieceAtMoveTarget.getPlayerColor() != thisPlayerColor;
         } else {
@@ -210,7 +220,7 @@ class ChessBoard {
 
     /**
      * Returns whether a rook can move from a specified tile to another specified tile. Does not check if making
-     * this move would put the king in check.
+     * this move would put the king in check. The from tile and to tile cannot be the same tile.
      *
      * @param fromRow the row the rook is in
      * @param fromCol the column the rook is in
@@ -224,7 +234,6 @@ class ChessBoard {
         int rowDiffAbs = Math.abs(toRow - fromRow);
         int colDiffAbs = Math.abs(toCol - fromCol);
 
-        if (rowDiffAbs == 0 && colDiffAbs == 0) return false;
         if (rowDiffAbs != 0 && colDiffAbs != 0) return false;
 
         if (rowDiffAbs == 0) { // moving along a row
@@ -232,7 +241,7 @@ class ChessBoard {
             int minCol = Math.min(fromCol, toCol);
             int maxCol = Math.max(fromCol, toCol);
             for (int col = minCol+1; // skip first column, as that's where the piece is
-                 col != maxCol-1;    // skip last column, as we need special handling
+                 col <= maxCol-1;    // skip last column, as we need special handling
                  col++) {
                 if (board[row][col] != null) return false;  // something is in the way: can't make the move
             }
@@ -244,7 +253,7 @@ class ChessBoard {
             int maxRow = Math.max(fromRow, toRow);
             int col = fromCol; // = toCol
             for (int row = minRow+1; // skip first row, as that's where the piece is
-                 row != maxRow-1;    // skip last row, as we need special handling
+                 row <= maxRow-1;    // skip last row, as we need special handling
                  row++) {
                 if (board[row][col] != null) return false;  // something is in the way: can't make the move
             }
@@ -314,7 +323,7 @@ class ChessBoard {
 
     /**
      * Returns whether a king can move from a specified tile to another specified tile. Does not check if making
-     * this move would put the piece in check.
+     * this move would put the piece in check. The from tile and to tile cannot be the same tile.
      *
      * @param fromRow the row the king is in
      * @param fromCol the column the king is in
@@ -328,8 +337,7 @@ class ChessBoard {
         int rowDiffAbs = Math.abs(toRow - fromRow);
         int colDiffAbs = Math.abs(toCol - fromCol);
 
-        if (rowDiffAbs == 0 && colDiffAbs == 0) return false;
-        else if (rowDiffAbs == 1 || colDiffAbs == 1) {
+        if (rowDiffAbs <= 1 && colDiffAbs <= 1) {
             ChessPiece pieceAtMoveTarget = board[toRow][toCol];
             // the end of the move can either be empty, or capturing an enemy
             return pieceAtMoveTarget == null || pieceAtMoveTarget.getPlayerColor() != thisPlayerColor;
@@ -350,6 +358,7 @@ class ChessBoard {
     boolean canMove(int fromRow, int fromCol, int toRow, int toCol) {
         if (!validateCoordinates(fromRow, fromCol)) return false;
         if (!validateCoordinates(toRow, toCol)) return false;
+        if (fromRow == toRow && fromCol == toCol) return false;
         ChessPiece chessPiece = board[fromRow][fromCol];
         switch (chessPiece.getPieceType()) {
             case PAWN: return canMovePawn(fromRow, fromCol, toRow, toCol, chessPiece.getPlayerColor());
@@ -390,8 +399,8 @@ class ChessBoard {
 
         movesToTry.add(new TileCoordinate(row + dRow, col));  // move 1 forwards
         movesToTry.add(new TileCoordinate(row + 2 * dRow, col));  // move 2 forwards
-        movesToTry.add(new TileCoordinate(row + dRow, col-1));  // capture left
-        movesToTry.add(new TileCoordinate(row + dRow, col+1));  // capture right
+        movesToTry.add(new TileCoordinate(row + dRow, col-1));  // capture left (or en passant)
+        movesToTry.add(new TileCoordinate(row + dRow, col+1));  // capture right (or en passant)
 
         for (TileCoordinate coordinate : movesToTry) {
             if (canMove(row, col, coordinate.getRow(), coordinate.getCol())) {
@@ -585,9 +594,9 @@ class ChessBoard {
            case KNIGHT: return getPossibleMovesKnight(row, col);
            case BISHOP: return getPossibleMovesBishop(row, col);
            case QUEEN:
-               ArrayList<TileCoordinate> moves = getPossibleMovesRook(row, col);
+               HashSet<TileCoordinate> moves = new HashSet<>(getPossibleMovesRook(row, col));
                moves.addAll(getPossibleMovesBishop(row, col));
-               return moves;
+               return new ArrayList<>(moves);
            case KING: return getPossibleMovesKing(row, col);
            default: throw new AssertionError("Unrecognized chess piece type in ChessBoard.getPossibleMoves()");
        }
@@ -640,6 +649,41 @@ class ChessBoard {
     }
 
     /**
+     * Processes all game logic related to en passant after a move has been made. This includes potentially capturing
+     * a pawn if en passant has occurred, and updating instance variables to track the next potential en passant move.
+     *
+     * @param fromRow the row that was just moved from
+     * @param fromCol the column that was just moved from
+     * @param toRow the row that was just moved to
+     * @param toCol the column that was just moved to
+     * @param movedPiece the piece that was just moved
+     */
+    private void processEnPassant(int fromRow, int fromCol, int toRow, int toCol, ChessPiece movedPiece) {
+        if (enPassantTile != null && toRow == enPassantTile.getRow() && toCol == enPassantTile.getCol()
+                && movedPiece.getPieceType() == ChessPiece.ChessPieceType.PAWN
+                && movedPiece.getPlayerColor() == enPassantColor) {
+            // en passant occurred, capture the opposing pawn that enabled it
+            int pawnToCaptureRow = movedPiece.getPlayerColor() == ChessPiece.PlayerColor.WHITE ? toRow + 1 : toRow - 1;
+            board[pawnToCaptureRow][toCol] = null;
+        }
+
+        // forfeit potential en passant move: it can only have been made this turn (and may have been)
+        enPassantTile = null;
+        enPassantColor = null;
+
+        // check if this move opens up a different en passant move
+        if (movedPiece.getPieceType() == ChessPiece.ChessPieceType.PAWN) {
+            if (Math.abs(toRow - fromRow) == 2) {
+                // a pawn moved 2 squares: potential en passant next turn
+                boolean whiteMoved = movedPiece.getPlayerColor() == ChessPiece.PlayerColor.WHITE;
+                int enPassantRow = whiteMoved ? toRow + 1 : toRow - 1;
+                enPassantTile = new TileCoordinate(enPassantRow, toCol);
+                enPassantColor = whiteMoved ? ChessPiece.PlayerColor.BLACK : ChessPiece.PlayerColor.WHITE;
+            }
+        }
+    }
+
+    /**
      * Attempts to make a move. This move must be legal, except for possibly leaving the king in check. If this move
      * does in fact leave the king in check (and is hence actually an illegal move), the move fails, and this function
      * returns false. Otherwise, the move succeeds, and this function returns true.
@@ -651,12 +695,13 @@ class ChessBoard {
      * @return whether the move succeeded
      */
     boolean tryMove(int fromRow, int fromCol, int toRow, int toCol) {
-        ChessPiece chessPiece = board[fromRow][fromCol];
+        ChessPiece movedPiece = board[fromRow][fromCol];
         move(fromRow, fromCol, toRow, toCol);
-        if (isInCheck(chessPiece.getPlayerColor())) {
+        if (isInCheck(movedPiece.getPlayerColor())) {
             move(toRow, toCol, fromRow, fromCol);  // revert
             return false;
         } else {
+            processEnPassant(fromRow, fromCol, toRow, toCol, movedPiece);
             return true;
         }
     }
