@@ -35,6 +35,6 @@ A daemon is required because there needs to be a process listening for these mes
 
 ****
 
-<b id="footnote1">1</b> For development, an easily debuggable naming scheme is `aaaaa.exe`, `aaaab.exe`, and so on. Eventually, this will be converted to combinations of Unicode whitespace characters so that the player cannot see that a name is even there. [↩](#backref1)
+<b id="footnote1">1</b> For development, an easily debuggable naming scheme is `aaaaa.exe`, `aaaab.exe`, and so on. Eventually, this will be converted to combinations of Unicode whitespace characters so that the player cannot see that a name is even there. Unicode whitespace characters were temporarily enabled to take the example chess image in README.md. [↩](#backref1)
 
 <b id="footnote2">2</b> Currently, this potential concurrency control is not taken advantage of. However, it may be used in the future. [↩](#backref2)
